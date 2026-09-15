@@ -35,6 +35,10 @@ LOG_FILE = CONTEXT_DIR / ".sync.log"
 # Ile dni wstecz przy pierwszym uruchomieniu (gdy brak .last_sync).
 FIRST_RUN_DAYS = 30
 
+# Margines nakładki okna przy kolejnych przebiegach (dni). Zapobiega gubieniu
+# commitów z dnia ostatniej synchronizacji; duplikaty odsiewa `.seen_commits`.
+OVERLAP_DAYS = 2
+
 SOURCES = [
     {
         "name": "MQL5_Freelancer",
@@ -100,13 +104,24 @@ def save_seen(seen: set[str]) -> None:
 
 
 def since_arg() -> str:
-    """Zwraca wartość dla --since: z .last_sync albo FIRST_RUN_DAYS wstecz."""
+    """Zwraca wartość dla --since jako pełny timestamp 'RRRR-MM-DD HH:MM:SS'.
+
+    Uwaga: gołej daty (`--since=2026-09-15`) NIE używamy — git rozwija ją względem
+    bieżącej godziny i pomija commity z tego samego dnia. Dlatego zawsze podajemy
+    czas. Przy kolejnych przebiegach cofamy się o OVERLAP_DAYS (dedup i tak chroni).
+    """
+    now = _dt.datetime.now()
     if LAST_SYNC_FILE.exists():
         val = LAST_SYNC_FILE.read_text(encoding="utf-8").strip()
         if val:
-            return val
-    d = _dt.date.today() - _dt.timedelta(days=FIRST_RUN_DAYS)
-    return d.isoformat()
+            try:
+                last = _dt.datetime.fromisoformat(val)
+                since = last - _dt.timedelta(days=OVERLAP_DAYS)
+                return since.strftime("%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                log(f"Niepoprawny .last_sync ('{val}') — traktuję jak pierwszy przebieg")
+    since = now - _dt.timedelta(days=FIRST_RUN_DAYS)
+    return since.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def feed_path(today: _dt.date) -> Path:
@@ -268,7 +283,9 @@ def main() -> int:
             log(f"{src['name']}: 0 nowych wpisów")
 
     save_seen(seen)
-    LAST_SYNC_FILE.write_text(_dt.date.today().isoformat(), encoding="utf-8")
+    LAST_SYNC_FILE.write_text(
+        _dt.datetime.now().isoformat(timespec="seconds"), encoding="utf-8"
+    )
 
     summary = ", ".join(summary_bits) if summary_bits else "0 nowych zdarzeń"
     autocommit(summary)
