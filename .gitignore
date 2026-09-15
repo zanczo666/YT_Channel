@@ -1,0 +1,12 @@
+# Lokalne zgody Claude Code (np. z panelu /sandbox) — nie do repo
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Stan skryptu synchronizacji (lokalny dla serwera)
+context/.last_sync
+context/.seen_commits
+context/.sync.log
+
+# Python
+__pycache__/
+*.pyc

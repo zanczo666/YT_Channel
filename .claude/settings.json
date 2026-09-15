@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "/home/claude/projects/MQL5_Freelancer"
+    ],
+    "allow": [
+      "Bash(python3 scripts/sync_context.py)",
+      "Bash(git -C /home/claude/projects/MQL5_Freelancer log *)",
+      "Bash(git -C /home/claude/projects/N8N_EA_System log *)",
+      "Bash(git -C /home/claude/projects/MQL5_Freelancer show *)"
+    ],
+    "deny": [
+      "Edit(//home/claude/projects/MQL5_Freelancer/**)",
+      "Edit(//home/claude/projects/N8N_EA_System/**)",
+      "Read(//home/claude/projects/N8N_EA_System/**)",
+      "Read(//home/claude/projects/MQL5_Freelancer/data/**)",
+      "Read(//home/claude/projects/MQL5_Freelancer/session-logs/**)",
+      "Read(//home/claude/projects/**/.env)",
+      "Read(//home/claude/projects/**/.env.*)",
+      "Read(//home/claude/projects/N8N_EA_System/.mcp.json)"
+    ],
+    "ask": []
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "filesystem": {
+      "denyRead": [
+        "/home/claude/projects/N8N_EA_System",
+        "/home/claude/projects/MQL5_Freelancer/data",
+        "/home/claude/projects/MQL5_Freelancer/session-logs"
+      ]
+    }
+  }
+}
