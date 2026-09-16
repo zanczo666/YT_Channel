@@ -7,7 +7,9 @@
       RiskPositionSizeCalculator, SessionSpreadAlert, SpreadMonitorScalpers).
 - [ ] Linia do `CLAUDE.md` freelance: przy publikacji narzędzia utwórz/zaktualizuj `VIDEO.md`.
 - [ ] Linia do `CLAUDE.md` N8N: trailer `Content: yes` + „Lekcja: …" dla ciekawych commitów.
-- [ ] Zainstalować `bubblewrap` + `socat` (sandbox) — `sudo apt install -y bubblewrap socat`.
+- [ ] (opcjonalne, gdy wrócimy do sandboxa) Zainstalować `bubblewrap` + `socat`
+      — `sudo apt install -y bubblewrap socat`; potem `sandbox.enabled:true` w settings.json.
+- [ ] Przed produkcyjnym uruchomieniem instancji RC: przywrócić `sandbox.enabled:true`.
 - [ ] Włączyć timer: `systemctl --user enable --now yt-sync.timer`.
 - [ ] Pierwsze uruchomienie interaktywne `claude` + testy granic (krok 7 dokumentu).
 - [ ] Utworzyć prywatne repo GitHub, `git remote add origin …`, `git push -u origin main`.

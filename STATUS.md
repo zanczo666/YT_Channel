@@ -1,12 +1,21 @@
 # STATUS — YT_Channel
 
-_Ostatnia aktualizacja: 2026-09-15_
+_Ostatnia aktualizacja: 2026-09-16_
 
 ## Stan
 - Szkielet projektu założony: repo git (`main`), struktura katalogów, `CLAUDE.md`, `.claude/settings.json`.
-- Skrypt synchronizacji kontekstu `scripts/sync_context.py` — gotowy, przetestowany lokalnie.
+- Skrypt synchronizacji kontekstu `scripts/sync_context.py` — gotowy, przetestowany lokalnie
+  (opt-in VIDEO.md, tryb `Content: yes`, dedup, auto-commit; naprawiony bug `--since` z gołą datą).
 - Komenda `/pomysly` gotowa.
-- Timer systemd `yt-sync` (co 6h) — pliki unit przygotowane.
+- Timer systemd `yt-sync` (co 6h) — pliki unit przygotowane, składnia zwalidowana; **timer nie włączony**.
+- **Sandbox WYŁĄCZONY** (`sandbox.enabled:false`) — decyzja tymczasowa. Reguły `deny` (Read/Edit) nadal
+  chronią narzędzia Claude; znika twarda warstwa dla procesów z Basha. Wrócić do `true` przed produkcyjnym RC.
+- `CLAUDE.md` wzmocniony sekcją „Projekty źródłowe — TYLKO ODCZYT (bezwzględnie)".
+
+## Dziennik sesji
+- 2026-09-16 — Założono cały projekt YT_Channel (main, bez worktree): repo, struktura, CLAUDE.md,
+  settings.json, sync_context.py + testy end-to-end, komenda /pomysly, unity systemd. Naprawiono bug
+  okna `--since`. Użytkownik wyłączył sandbox (tymczasowo).
 
 ## W toku
 - (nic)
