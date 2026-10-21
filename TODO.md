@@ -13,7 +13,7 @@
 - [ ] Globalny `~/.claude/CLAUDE.md` nadal wymaga `/ralph-loop` — plugin nieaktualny; usunąć regułę (decyzja użytkownika).
 - [ ] `docs/OVERVIEW.md` (≤60 linii) w MQL5_Freelancer — wykonać z sesji tego projektu.
 - [ ] `docs/OVERVIEW.md` (≤60 linii) w N8N_EA_System — wykonać z sesji tego projektu.
-- [ ] Karty `mql5/<Nazwa>/VIDEO.md` we freelance dla narzędzi do pokazania (IchimokuProPanel,
+- [ ] Karty `mql5/<Nazwa>/VIDEO.md` we freelance (polecenie: `docs/MQL5_EXPORT_INSTRUKCJA.md`) dla narzędzi do pokazania (IchimokuProPanel,
       RiskPositionSizeCalculator, SessionSpreadAlert, SpreadMonitorScalpers).
 - [ ] Linia do `CLAUDE.md` freelance: przy publikacji narzędzia utwórz/zaktualizuj `VIDEO.md`.
 - [ ] Linia do `CLAUDE.md` N8N: trailer `Content: yes` + „Lekcja: …" dla ciekawych commitów.
