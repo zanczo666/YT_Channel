@@ -8,6 +8,9 @@ Zbiera świeże zdarzenia z dwóch repozytoriów i zapisuje je do `context/`:
   feedu commity dotykające tych narzędzi.
 - N8N_EA_System: dopisuje do feedu WYŁĄCZNIE commity z trailerem `Content: yes`
   (czytane przez `git log --grep`, tylko metadane — bez odczytu plików repo).
+- N8N_EA_System: kopiuje WYŁĄCZNIE folder `export/yt/` (karty lekcji, raporty lejka,
+  karty Graveyard) do `context/factory/` — przez `git show`, żadnych innych plików.
+  Karty z `publish_after` w przyszłości oznacza w feedzie jako embargo.
 
 Czyta zawsze z gałęzi `ref` (domyślnie `main`) przez `git -C … log/show/ls-tree`,
 nie z katalogu roboczego źródła. Dedup po hashach commitów (`context/.seen_commits`).
@@ -17,6 +20,7 @@ Na końcu — jeśli powstały zmiany — commituje `context/` osobnym commitem 
 from __future__ import annotations
 
 import datetime as _dt
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -28,6 +32,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONTEXT_DIR = PROJECT_ROOT / "context"
 FEED_DIR = CONTEXT_DIR / "feed"
 TOOLS_DIR = CONTEXT_DIR / "tools"
+FACTORY_DIR = CONTEXT_DIR / "factory"
 SEEN_FILE = CONTEXT_DIR / ".seen_commits"
 LAST_SYNC_FILE = CONTEXT_DIR / ".last_sync"
 LOG_FILE = CONTEXT_DIR / ".sync.log"
@@ -54,7 +59,17 @@ SOURCES = [
         "mode": "flagged",       # tylko commity z trailerem Content: yes
         "flag_grep": r"Content: *yes",
     },
+    {
+        "name": "N8N_EA_System",
+        "repo": Path("/home/claude/projects/N8N_EA_System"),
+        "ref": "main",
+        "mode": "export_dir",    # tylko kopia folderu przeznaczonego dla kanału
+        "export_root": "export/yt",
+    },
 ]
+
+# Data embargo w frontmatterze karty: `publish_after: RRRR-MM-DD`.
+PUBLISH_AFTER_RE = re.compile(r"^publish_after:\s*(\d{4}-\d{2}-\d{2})", re.MULTILINE)
 
 # --- Narzędzia pomocnicze ---------------------------------------------------
 
@@ -224,6 +239,62 @@ def sync_flagged(src: dict, since: str, seen: set[str], today: _dt.date) -> list
     return entries
 
 
+def embargo_until(content: str, today: _dt.date) -> _dt.date | None:
+    """Zwraca datę embargo, jeśli `publish_after` jest w przyszłości; inaczej None."""
+    m = PUBLISH_AFTER_RE.search(content)
+    if not m:
+        return None
+    try:
+        until = _dt.date.fromisoformat(m.group(1))
+    except ValueError:
+        return None
+    return until if until > today else None
+
+
+def sync_export_dir(src: dict, since: str, seen: set[str], today: _dt.date) -> list[str]:
+    """N8N_EA_System: lustro folderu `export/yt/` w `context/factory/` (tylko ten folder)."""
+    repo, ref, root = src["repo"], src["ref"], src["export_root"].rstrip("/")
+    out = git(repo, "ls-tree", "-r", "--name-only", ref, "--", root, check=False)
+    upstream: dict[str, str] = {}
+    for line in out.splitlines():
+        line = line.strip()
+        if not line.startswith(root + "/") or not line.endswith(".md"):
+            continue
+        rel = line[len(root) + 1:]
+        # Ochrona przed wyjściem poza context/factory/.
+        if ".." in Path(rel).parts:
+            log(f"{src['name']}: POMIJAM podejrzaną ścieżkę {line}")
+            continue
+        upstream[rel] = line
+    if not upstream:
+        log(f"{src['name']}: brak plików w '{root}/' — nic do zebrania")
+
+    entries: list[str] = []
+    for rel, path in sorted(upstream.items()):
+        content = git(repo, "show", f"{ref}:{path}", check=False)
+        if not content:
+            continue
+        dest = FACTORY_DIR / rel
+        old = dest.read_text(encoding="utf-8") if dest.exists() else None
+        if old == content:
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(content, encoding="utf-8")
+        status = "nowa karta" if old is None else "zmieniona karta"
+        until = embargo_until(content, today)
+        tag = f" [EMBARGO do {until.isoformat()}]" if until else ""
+        entries.append(f"- `{rel}` — {status}{tag}")
+
+    # Karty usunięte w źródle znikają też z lustra.
+    if FACTORY_DIR.exists():
+        for local in sorted(FACTORY_DIR.rglob("*.md")):
+            rel = local.relative_to(FACTORY_DIR).as_posix()
+            if rel not in upstream:
+                local.unlink()
+                entries.append(f"- `{rel}` — usunięta w źródle")
+    return entries
+
+
 # --- Auto-commit ------------------------------------------------------------
 
 
@@ -249,6 +320,7 @@ def autocommit(summary: str) -> None:
 def main() -> int:
     FEED_DIR.mkdir(parents=True, exist_ok=True)
     TOOLS_DIR.mkdir(parents=True, exist_ok=True)
+    FACTORY_DIR.mkdir(parents=True, exist_ok=True)
 
     today = _dt.date.today()
     since = since_arg()
@@ -265,6 +337,8 @@ def main() -> int:
                 entries = sync_video_cards(src, since, seen, today)
             elif src["mode"] == "flagged":
                 entries = sync_flagged(src, since, seen, today)
+            elif src["mode"] == "export_dir":
+                entries = sync_export_dir(src, since, seen, today)
             else:
                 log(f"{src['name']}: nieznany tryb '{src['mode']}' — pomijam")
                 continue
@@ -272,7 +346,8 @@ def main() -> int:
             log(f"{src['name']}: BŁĄD — {exc}")
             continue
 
-        title = src["name"] + (" (Content: yes)" if src["mode"] == "flagged" else "")
+        suffix = {"flagged": " (Content: yes)", "export_dir": " (export/yt)"}.get(src["mode"], "")
+        title = src["name"] + suffix
         append_feed(today, title, entries)
         if entries:
             n = sum(1 for e in entries if e.startswith("- `"))

@@ -1,8 +1,11 @@
 # STATUS — YT_Channel
 
-_Ostatnia aktualizacja: 2026-09-16_
+_Ostatnia aktualizacja: 2026-10-21_
 
 ## Stan
+- **Strategia kanału gotowa:** `docs/CHANNEL_STRATEGY.md`; plan 10 filmów: `content/ideas/2026-10-21-plan-startowy.md`.
+- **Przepływ z fabryki:** `sync_context.py` umie kopiować `export/yt/` → `context/factory/`; po stronie fabryki folder
+  jeszcze nie istnieje (instrukcja: `docs/N8N_EXPORT_INSTRUKCJA.md`).
 - Szkielet projektu założony: repo git (`main`), struktura katalogów, `CLAUDE.md`, `.claude/settings.json`.
 - Skrypt synchronizacji kontekstu `scripts/sync_context.py` — gotowy, przetestowany lokalnie
   (opt-in VIDEO.md, tryb `Content: yes`, dedup, auto-commit; naprawiony bug `--since` z gołą datą).
@@ -13,6 +16,9 @@ _Ostatnia aktualizacja: 2026-09-16_
 - `CLAUDE.md` wzmocniony sekcją „Projekty źródłowe — TYLKO ODCZYT (bezwzględnie)".
 
 ## Dziennik sesji
+- 2026-10-21 — Zdefiniowano strategię kanału (EN + napisy PL, marka osobista + QuantInvest jako lab, nagrywanie
+  hybrydowe, start za 0 zł, 70% projekty / 30% evergreen, 5 filarów, zero języka sprzedaży o sobie). Przeanalizowano
+  sesję ChatGPT. Dodano kontrakt contentowy z fabryką (`export/yt/` → `context/factory/`, tryb `export_dir`).
 - 2026-09-16 — Założono cały projekt YT_Channel (main, bez worktree): repo, struktura, CLAUDE.md,
   settings.json, sync_context.py + testy end-to-end, komenda /pomysly, unity systemd. Naprawiono bug
   okna `--since`. Użytkownik wyłączył sandbox (tymczasowo).
