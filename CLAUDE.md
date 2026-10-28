@@ -36,4 +36,8 @@ Pełna strategia kanału: `docs/CHANNEL_STRATEGY.md` (czytaj przed pracą nad po
 - Pomysły: `content/ideas/RRRR-MM-DD-slug.md`. Scenariusze: `content/scripts/slug.md`.
 - Filmy (tytuły, skrypty, opisy) po angielsku; każdy film ma napisy EN + PL i rozdziały z timestampami (`0:00`, min. 3).
 - Szablony: `docs/templates/` (scenariusz, opis). Komunikacja z użytkownikiem i dokumenty projektu — po polsku.
+- Opakowanie filmu (tytuł, miniatura, opis, tagi, CTA, shorts): `docs/YT_PUBLISHING_STANDARD.md`;
+  pakiet publikacji robi agent `yt-producer` (komenda `/publikacja <slug>`), miniatury: `scripts/thumbnail.py`.
+- Research kanałów: `scripts/yt_research.py` (klucz API tylko z `~/.config/yt_channel/youtube_api_key`,
+  nigdy nie wypisywać); surowe dane poza repo, wnioski w `docs/research/`. Odświeżać co kwartał.
 - Pracujemy na gałęzi `main` (bez worktree). Commit prosto na `main`.

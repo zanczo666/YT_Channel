@@ -1,6 +1,9 @@
 # TODO — YT_Channel
 
 ## Do zrobienia
+- [ ] Wgrać 3–5 zdjęć twarzy do `assets/face/` (opis w `assets/face/README.md`) — potrzebne do miniatur.
+- [ ] Po założeniu kanału: sprawdzić w YouTube Studio Test & Compare (tytuły/miniatury) i zasady hashtagów.
+- [ ] Research kanałów — odświeżenie 2027-01 (`scripts/yt_research.py`).
 - [ ] **Fabryka (z sesji N8N, nie stąd):** wkleić polecenie z `docs/N8N_EXPORT_INSTRUKCJA.md` → folder `export/yt/`
       + sekcja „Eksport dla kanału YT” w ich CLAUDE.md.
 - [ ] **Fabryka:** Research Ledger z ID `QF-xxx` i powodem odrzutu na każdym etapie.
@@ -29,6 +32,8 @@
 - (nic)
 
 ## Ukończone
+- [x] Research 10 kanałów przez YouTube Data API → `docs/research/2026-10-yt-kanaly.md`, `docs/YT_PUBLISHING_STANDARD.md`.
+- [x] Agent `yt-producer` + `/publikacja`, generator miniatur `scripts/thumbnail.py`.
 - [x] Strategia kanału: `docs/CHANNEL_STRATEGY.md`, szablony `docs/templates/`, `docs/export-yt-templates/`.
 - [x] `sync_context.py`: tryb `export_dir` (lustro `export/yt/` → `context/factory/`, embargo, usunięcia) + test na sztucznych repo.
 - [x] Analiza sesji ChatGPT i plan 10 filmów w `content/ideas/`.

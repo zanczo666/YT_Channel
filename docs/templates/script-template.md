@@ -40,6 +40,10 @@ EN:
 PL:
 Na ekranie:
 
+### CTA (głosem, twarz — po kluczowym wniosku, przed werdyktem; standard §9)
+EN: If this kind of testing is useful, subscribe — every month I publish what survived and what didn't. And a like helps the video reach other systematic traders.
+PL: Jeśli takie testy są dla Ciebie wartościowe, zasubskrybuj — co miesiąc publikuję, co przetrwało, a co nie. A łapka w górę pomaga dotrzeć do innych traderów systematycznych.
+
 ## [~7:00] Verdict & numbers (twarz)
 <!-- Krok 4: werdykt PASS / CONDITIONAL / FAIL, liczby wyłącznie z Ledgera. -->
 EN:
@@ -48,8 +52,8 @@ PL:
 ## [~8:30] Disclaimer & next
 EN: Historical results, not investment advice. Past performance does not guarantee future results.
 PL: Wyniki historyczne, nie porada inwestycyjna. Wyniki z przeszłości nie gwarantują przyszłych.
-EN (next):
-PL (next):
+EN (next — plansza końcowa, ostatnie 20 s): Subscribe for the next result, and this video shows <next topic>.
+PL (next): Zasubskrybuj, żeby zobaczyć kolejny wynik, a w tym filmie pokazuję <następny temat>.
 
 ---
 
