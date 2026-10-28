@@ -48,13 +48,15 @@ def base_background(bg_path: Path | None) -> Image.Image:
     return img
 
 
-def place_face(img: Image.Image, face_path: Path, accent: tuple[int, int, int]) -> None:
-    """Twarz po prawej: PNG z przezroczystością wklejany jako wycięcie, zwykłe zdjęcie przycinane do kadru."""
+def place_face(img: Image.Image, face_path: Path, accent: tuple[int, int, int]) -> int:
+    """Twarz po prawej: PNG z przezroczystością wklejany jako wycięcie, zwykłe zdjęcie przycinane do kadru.
+
+    Zwraca współrzędną x lewej krawędzi twarzy — tekst nie może jej przekroczyć."""
     face = Image.open(face_path)
     box_w, box_h = int(W * 0.42), H
     if face.mode in ("RGBA", "LA") or "transparency" in face.info:
         face = face.convert("RGBA")
-        face.thumbnail((box_w + 120, int(box_h * 1.05)))
+        face.thumbnail((box_w, int(box_h * 1.0)))
         # Obrys w kolorze akcentu — rozpoznawalność szablonu.
         alpha = face.split()[-1]
         outline = Image.new("RGBA", face.size, accent + (0,))
@@ -62,16 +64,25 @@ def place_face(img: Image.Image, face_path: Path, accent: tuple[int, int, int]) 
         x, y = W - face.width + 20, H - face.height
         img.paste(outline, (x, y), outline)
         img.paste(face, (x, y), face)
+        return x
     else:
         face = ImageOps.fit(face.convert("RGB"), (box_w, box_h))
         mask = Image.linear_gradient("L").rotate(90).resize((box_w, box_h))  # miękkie przejście w tło
         img.paste(face, (W - box_w, 0), mask)
+        return W - box_w
 
 
 def parse_lines(text: str) -> list[list[tuple[str, bool]]]:
-    lines = []
+    """Linie słów z flagą akcentu; `*…*` może obejmować kilka słów, także przez `|`."""
+    lines, hot = [], False
     for raw in text.split("|"):
-        words = [(w.strip("*"), bool(re.fullmatch(r"\*.+\*", w))) for w in raw.split()]
+        words = []
+        for w in raw.split():
+            if w.startswith("*"):
+                hot = True
+            words.append((w.strip("*"), hot))
+            if w.endswith("*") and len(w) > 1:
+                hot = False
         lines.append(words)
     return lines
 
@@ -85,10 +96,11 @@ def fit_font(lines, max_w: int, max_h: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(FONT_BOLD, 40)
 
 
-def draw_text(img: Image.Image, text: str, accent, has_right: bool) -> None:
+def draw_text(img: Image.Image, text: str, accent, right_edge: int | None) -> None:
     d = ImageDraw.Draw(img)
     lines = parse_lines(text)
-    left, max_w = 56, int(W * (0.55 if has_right else 0.88))
+    left = 56
+    max_w = (right_edge - left - 30) if right_edge else int(W * 0.88)
     font = fit_font(lines, max_w, int(H * 0.62))
     lh = int(font.size * 1.02)
     y = (H - lh * len(lines)) // 2 + 20
@@ -136,9 +148,8 @@ def main() -> int:
         print(f"UWAGA: {words} słów na miniaturze — standard to 2–4.", file=sys.stderr)
     accent = ACCENTS[a.verdict]
     img = base_background(a.bg)
-    if a.face:
-        place_face(img, a.face, accent)
-    draw_text(img, a.text, accent, has_right=bool(a.face))
+    face_x = place_face(img, a.face, accent) if a.face else None
+    draw_text(img, a.text, accent, right_edge=face_x)
     if a.label:
         draw_label(img, a.label.upper(), accent)
     save_jpg(img, a.out)

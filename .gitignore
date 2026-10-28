@@ -12,8 +12,8 @@ __pycache__/
 *.pyc
 
 # Zdjęcia twarzy (prywatne, tylko na serwerze)
-assets/face/*.png
-assets/face/*.jpg
+assets/face/**/*.png
+assets/face/**/*.jpg
 
 # Wygenerowane pakiety publikacji — miniatury
 content/publish/**/*.jpg
