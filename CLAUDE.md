@@ -40,4 +40,6 @@ Pełna strategia kanału: `docs/CHANNEL_STRATEGY.md` (czytaj przed pracą nad po
   pakiet publikacji robi agent `yt-producer` (komenda `/publikacja <slug>`), miniatury: `scripts/thumbnail.py`.
 - Research kanałów: `scripts/yt_research.py` (klucz API tylko z `~/.config/yt_channel/youtube_api_key`,
   nigdy nie wypisywać); surowe dane poza repo, wnioski w `docs/research/`. Odświeżać co kwartał.
+- Pełna treść filmu (dźwięk + ekran): `scripts/yt_watch.py --url <link> --out <plik>` (Gemini API, klucz tylko
+  z `~/.config/yt_channel/gemini_api_key`). Wynik surowy do scratchpada, wnioski do `content/ideas/`.
 - Pracujemy na gałęzi `main` (bez worktree). Commit prosto na `main`.
