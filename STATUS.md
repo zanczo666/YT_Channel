@@ -1,8 +1,9 @@
 # STATUS — YT_Channel
 
-_Ostatnia aktualizacja: 2026-10-21_
+_Ostatnia aktualizacja: 2026-10-29_
 
 ## Stan
+- **Następny etap:** etap 1 pipeline (MVP montażu na VPS) — `docs/PIPELINE.md`; czeka na nagranie próbne.
 - **Strategia kanału gotowa:** `docs/CHANNEL_STRATEGY.md`; plan 10 filmów: `content/ideas/2026-10-21-plan-startowy.md`.
 - **Przepływ z fabryki:** `sync_context.py` umie kopiować `export/yt/` → `context/factory/`; po stronie fabryki folder
   jeszcze nie istnieje (instrukcja: `docs/N8N_EXPORT_INSTRUKCJA.md`).
@@ -16,6 +17,10 @@ _Ostatnia aktualizacja: 2026-10-21_
 - `CLAUDE.md` wzmocniony sekcją „Projekty źródłowe — TYLKO ODCZYT (bezwzględnie)".
 
 ## Dziennik sesji
+- 2026-10-21→29 — Research 10 kanałów (YouTube API) → standard publikacji; miniatury 0 zł (simple/rich, twarz
+  właściciela, rembg); agenci `yt-scriptwriter`/`yt-producer`; analiza filmów przez Gemini (`yt_watch.py`);
+  architektura produkcji `docs/PIPELINE.md` (2 bramki, render na claudecore, Syncthing, Discord). Handoff:
+  `session-logs/2026-10-29-strategia-i-pipeline-kanalu.md`.
 - 2026-10-21 — Zdefiniowano strategię kanału (EN + napisy PL, marka osobista + QuantInvest jako lab, nagrywanie
   hybrydowe, start za 0 zł, 70% projekty / 30% evergreen, 5 filarów, zero języka sprzedaży o sobie). Przeanalizowano
   sesję ChatGPT. Dodano kontrakt contentowy z fabryką (`export/yt/` → `context/factory/`, tryb `export_dir`).
