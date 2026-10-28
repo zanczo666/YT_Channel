@@ -27,12 +27,18 @@ pakujesz gotowy scenariusz tak, żeby film został znaleziony, kliknięty i dobr
 2. `description.txt` — opis wg struktury §4 standardu; rozdziały z sekcji `## [m:ss]` scenariusza
    (pierwszy `0:00`, min. 3, ≥10 s, nazwy opisowe). Sprawdź limit 5000 znaków (`wc -m`).
 3. `tags.txt` — 8–15 tagów, jeden na linię; hashtagi 0–3 są już w opisie.
-4. `thumbnail.jpg` + podgląd — wygeneruj:
-   `python3 scripts/thumbnail.py --text "<2–4 słowa, *akcent*, | linia>" --label "<FILAR #n>"
-   --verdict <pass|fail|neutral> [--face assets/face/<plik>] [--bg <tło>] --out content/publish/<slug>/thumbnail.jpg`.
-   Tekst miniatury uzupełnia tytuł, nie powtarza go. Obejrzyj wynik i podgląd 168×94 (Read na pliku obrazu);
-   jeśli tekst jest nieczytelny w podglądzie — skróć i wygeneruj ponownie. Zaproponuj też 1 wariant alternatywny
-   (`thumbnail-b.jpg`) do testu A/B.
+4. **Miniatury — 3–4 warianty + siatka** (decyzja 2026-10-28: generowanie AI wyłączone, tylko `scripts/thumbnail.py`
+   i prawdziwe zdjęcia z `assets/face/`; zasady zdjęć: `assets/face/face_lock.md`):
+   - **Punkt kontrolny:** zanim wygenerujesz, zapisz w `thumbnails.md` 3–4 koncepcje (tekst 2–4 słowa, zdjęcie
+     twarzy, tło, werdykt/kolor) — każda inny archetyp: (A) twarz + tekst, (B) liczba/wynik bez twarzy,
+     (C) publikacja/wykres w tle + twarz, (D) pytanie. Tekst miniatury uzupełnia tytuł, nie powtarza go.
+   - Generuj: `python3 scripts/thumbnail.py --text "<…, *akcent*, | linia>" --label "<FILAR #n>"
+     --verdict <pass|fail|neutral> [--face assets/face/<plik>] [--bg <tło>] --out content/publish/<slug>/thumbnail-a.jpg`
+     (…-b, -c, -d).
+   - Jeśli istnieje `assets/style/master.jpg` (zatwierdzona miniatura-matka) — trzymaj się jej układu i kolorów.
+   - Siatka: `python3 scripts/thumbnail_grid.py --out content/publish/<slug>/grid.png content/publish/<slug>/thumbnail-*.jpg`.
+     Obejrzyj siatkę (Read na pliku obrazu); wariant nieczytelny w małym podglądzie — popraw i wygeneruj ponownie.
+   - W `thumbnails.md` wskaż faworyta i **3 warianty do testu A/B** w YouTube Studio (Test & Compare).
 5. `pinned-comment.txt` — pytanie do widzów związane z filmem, bez linków sprzedażowych.
 6. `end-screen.md` — co na planszy (subskrypcja + następny film/playlista filaru) i zdanie CTA do powiedzenia
    głosem w ostatnich 20 s.

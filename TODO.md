@@ -1,6 +1,8 @@
 # TODO — YT_Channel
 
 ## Do zrobienia
+- [ ] Po 5–10 filmach: ocena miniatur AI (opcja 2 — Gemini API z płatnościami i alertem budżetu) na podstawie testów A/B.
+- [ ] Po kilku testach A/B: zatwierdzić miniaturę-matkę → `assets/style/master.jpg`.
 - [ ] Wgrać 3–5 zdjęć twarzy do `assets/face/` (opis w `assets/face/README.md`) — potrzebne do miniatur.
 - [ ] Po założeniu kanału: sprawdzić w YouTube Studio Test & Compare (tytuły/miniatury) i zasady hashtagów.
 - [ ] Research kanałów — odświeżenie 2027-01 (`scripts/yt_research.py`).

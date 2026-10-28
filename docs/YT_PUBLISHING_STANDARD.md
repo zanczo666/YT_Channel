@@ -55,6 +55,13 @@ względem mediany kanału) to tytuły sceptyczne z twardą liczbą i testem w 1.
 5. Czytelność sprawdzana na podglądzie **168×94** (rozmiar z listy na telefonie).
 6. Seria = rozpoznawalny element: etykieta filaru w rogu (np. `GRAVEYARD`, `PAPER vs REALITY`, `FUNNEL #3`).
 7. Bez: strzałek-clickbaitów, przesadnej mimiki, kwot zysku, „$$$”, logo brokerów.
+8. **Warianty i test A/B:** 3–4 warianty w różnych archetypach (twarz + tekst / liczba bez twarzy / publikacja
+   w tle / pytanie), siatka podglądu (`scripts/thumbnail_grid.py`), 3 najlepsze do Test & Compare w YouTube Studio.
+   Zwycięzcę po kilku filmach zatwierdzamy jako **miniaturę-matkę** (`assets/style/master.jpg`) — wzór stylu.
+9. **Generowanie obrazów AI — wyłączone** (decyzja 2026-10-28, start za 0 zł; Gemini image nie ma darmowego
+   limitu). Wracamy do tematu po 5–10 filmach: płatności w Google Cloud z alertem budżetu, AI tylko do sceny
+   bez tekstu, tekst zawsze z `thumbnail.py`, obowiązkowy punkt kontrolny przed każdą płatną partią.
+   Analiza podejścia: `content/ideas/2026-10-28-analiza-miniatury-higgsfield.md`.
 
 ## 4. Opis
 **Dane:** milionowe kanały mają 7–12 linków i 2000–3500 znaków (Veritasium), MKBHD celowo krótko (~400).
@@ -113,7 +120,7 @@ Nie da się tego zmierzyć przez API — reguły z poradników i z naszej fazy z
 
 ## 10. Checklista publikacji (agent `yt-producer` ją wypełnia)
 - [ ] Tytuł 40–55 znaków, wzorzec z §2, bez zakazanych słów, 3–5 wariantów.
-- [ ] Miniatura 1280×720 JPG ≤2 MB, 2–4 słowa, test 168×94, etykieta filaru.
+- [ ] Miniatury: 3–4 warianty, siatka, faworyt + 3 do A/B; 1280×720 JPG ≤2 MB, 2–4 słowa, test 168×94, etykieta filaru.
 - [ ] Opis wg §4, rozdziały `0:00` (min. 3), źródła, disclaimer, linki niesprzedażowe.
 - [ ] Napisy EN + PL (`.srt`).
 - [ ] Tagi 8–15, hashtagi 0–3.
