@@ -14,6 +14,14 @@ Czego **nie da się** (dziś) zautomatyzować w 100% — i dlaczego:
 | Plansza końcowa, karty, przypięty komentarz, Test & Compare | Brak w YouTube Data API | ~5 min w YouTube Studio na film (lista kontrolna z agenta) |
 | Zatwierdzenie treści | Kanał finansowy: ryzyko wycieku parametrów strategii, błędnej liczby, braku disclaimera | **Dwie bramki z telefonu** (scenariusz, podgląd prywatny) — świadomie zostawione |
 
+## Decyzje (2026-10-29)
+- **Bramki:** 2 — akceptacja scenariusza i podglądu prywatnego filmu.
+- **Render:** VPS `claudecore` (fabryka EA działa na innych serwerach). Bez limitów CPU; **tylko limit pamięci
+  i niski priorytet** (`MemoryMax`, `nice`/`ionice`) — na serwerze działa kilkanaście sesji Claude Code
+  (~300 MB każda, ~5 z 7 GB RAM zajęte), a transkrypcja + render bez limitu mogłyby je ubić (OOM).
+- **Przesył:** Syncthing — z telefonu i z komputera (OBS zapisuje do synchronizowanego folderu); jeden `inbox/`.
+- **Powiadomienia i akceptacje:** Discord — prywatny serwer, bot na VPS z przyciskami Akceptuj/Popraw.
+
 ## 2. Przepływ (maszyna stanów jednego filmu)
 ```
 IDEA → SCRIPT_DRAFT → [✋ akceptacja scenariusza] → READY_TO_RECORD → RECORDED → INGESTED
@@ -40,7 +48,7 @@ idempotentny, logowany, z powiadomieniem przy błędzie.
 |---|---|---|---|
 | B1 | Teleprompter | ✅ | `<slug>.teleprompter.txt` → darmowa aplikacja na telefonie |
 | B2 | Standard nagrania | ⬜ | `docs/RECORDING.md`: kadr, światło, dźwięk, 1080p/30 lub 4K/30, „pomyłka → powtórz całe zdanie”, nazewnictwo |
-| B3 | Automatyczny przesył z telefonu | ⬜ | **Syncthing** (darmowy, telefon → VPS, bez chmury) do `inbox/<slug>/`; runner wykrywa nowe pliki |
+| B3 | Automatyczny przesył | ⬜ | **Syncthing** (darmowy, bez chmury): telefon i komputer (OBS) → VPS `inbox/`; runner wykrywa nowe pliki |
 | B4 | Sesje seriami | ⬜ | 2 scenariusze na sesję co 2 tygodnie |
 
 ### C. Postprodukcja (VPS, lekko, z limitami zasobów)
@@ -92,8 +100,8 @@ idempotentny, logowany, z powiadomieniem przy błędzie.
 | # | Element | Status | Opis |
 |---|---|---|---|
 | G1 | Runner + stan | ⬜ | timer systemd, `status.json`, idempotentne kroki, ponawianie |
-| G2 | Powiadomienia i akceptacje | ⬜ | Telegram (masz doświadczenie z botem): „scenariusz gotowy”, „podgląd gotowy”, przyciski Akceptuj/Popraw |
-| G3 | Zasoby VPS | ⬜ | ciężkie kroki z `systemd-run -p CPUQuota=… -p MemoryMax=…`, `nice/ionice`, okno czasowe poza pracą fabryki |
+| G2 | Powiadomienia i akceptacje | ⬜ | Discord: bot na VPS (prywatny serwer, kanał #produkcja), przyciski Akceptuj/Popraw, uwagi w wątku |
+| G3 | Zasoby VPS | ⬜ | ciężkie kroki przez `systemd-run -p MemoryMax=…` + `nice/ionice` (ochrona sesji Claude Code przed OOM); bez limitu CPU |
 | G4 | Magazyn i retencja | ⬜ | surowe pliki usuwane 30 dni po publikacji (kopia u Ciebie/Drive), monitoring dysku |
 | G5 | Sekrety | 🟡 | klucze w `~/.config/yt_channel/` (600); dodać token OAuth (odświeżany) — nigdy w repo/logach |
 | G6 | Uruchamianie agentów bez czatu | ⬜ | `claude -p` (tryb nieinteraktywny) wywoływany przez runner dla scenariusza/opakowania |
@@ -109,7 +117,7 @@ idempotentny, logowany, z powiadomieniem przy błędzie.
 | **5. Opcjonalnie** | miniatury AI (opcja 2), 4K, zaawansowany motion design | po 5–10 filmach, na danych z testów A/B |
 
 ## 5. Ryzyka
-- **Obciążenie VPS** (fabryka EA ma priorytet) → limity cgroup, okno czasowe; alternatywa: osobny mały VPS.
+- **Pamięć VPS** (sesje Claude Code) → limit pamięci dla transkrypcji/renderu; przy wzroście kanału ewentualnie więcej RAM.
 - **Audyt API** może potrwać tygodnie → do tego czasu publikacja jednym kliknięciem.
 - **Jakość dźwięku** to największa dźwignia jakości przy 0 zł → standard nagrania, potem ewentualnie mikrofon krawatowy.
 - **Koszt tokenów** przy grafikach → szablony wielokrotnego użytku zamiast generowania od zera.
