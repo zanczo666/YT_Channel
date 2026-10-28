@@ -58,6 +58,10 @@ względem mediany kanału) to tytuły sceptyczne z twardą liczbą i testem w 1.
 5. Czytelność sprawdzana na podglądzie **168×94** (rozmiar z listy na telefonie).
 6. Seria = rozpoznawalny element: etykieta filaru w rogu (np. `GRAVEYARD`, `PAPER vs REALITY`, `FUNNEL #3`).
 7. Bez: strzałek-clickbaitów, przesadnej mimiki, kwot zysku, „$$$”, logo brokerów.
+7b. **Układ „rich”** (`--layout rich`, wzór: popularne kanały tech/AI): tekst u góry po lewej (2 linie), świecąca,
+   lekko obrócona karta ze zrzutem ekranu (MT5, Python, terminal) albo panelem backtestu z podziałem IS/OOS,
+   twarz z poświatą w kolorze werdyktu, odznaka ✓/✗/? na rogu karty, opcjonalnie przerywana strzałka.
+   Zrzuty ekranu tylko bez danych wrażliwych i bez parametrów strategii na sprzedaż.
 8. **Warianty i test A/B:** 3–4 warianty w różnych archetypach (twarz + tekst / liczba bez twarzy / publikacja
    w tle / pytanie), siatka podglądu (`scripts/thumbnail_grid.py`), 3 najlepsze do Test & Compare w YouTube Studio.
    Zwycięzcę po kilku filmach zatwierdzamy jako **miniaturę-matkę** (`assets/style/master.jpg`) — wzór stylu.

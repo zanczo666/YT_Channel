@@ -36,6 +36,9 @@ pakujesz gotowy scenariusz tak, żeby film został znaleziony, kliknięty i dobr
      --verdict <pass|fail|neutral> --motif <equity|candles|funnel|none> [--equity-csv <realne dane>]
      [--face assets/face/<plik>] [--bg <tło>] --out content/publish/<slug>/thumbnail-a.jpg`
      (…-b, -c, -d).
+   - **Układ:** domyślnie `--layout rich` (karta ze zrzutem ekranu lub panelem backtestu, poświata twarzy, odznaka
+     werdyktu ✓/✗/?, opcjonalnie `--arrow`). Jeśli scenariusz wskazuje zrzut ekranu (raport MT5, wykres z Pythona,
+     terminal) — podaj go w `--screen`. W siatce A/B zostaw 1 wariant `--layout simple` (czysty tekst) dla kontrastu.
    - Motyw: `equity` (Validation Gates, Paper vs Reality, Graveyard — werdykt fail = załamanie po OUT-OF-SAMPLE),
      `funnel` (The Funnel), `candles` (wariant alternatywny), `none` (Tools). Motyw syntetyczny jest dekoracją bez
      liczb; jeśli karta ma realną krzywą — użyj `--equity-csv`.

@@ -21,4 +21,5 @@ Surowe zdjęcia: `raw/` (7 szt.), wycięte tło: `cut/` (rembg, lokalnie: `scrip
 - `face-pass.png` ← IMG_20261028_222940 (lekki uśmiech)
 
 Do poprawy przy następnej sesji zdjęć: telefon na wysokości oczu (nie z dołu), 1–1,5 m, zoom 2×, samowyzwalacz
-(bez ręki w kadrze), gładka koszulka bez dużego nadruku.
+(bez ręki w kadrze), gładka koszulka bez dużego nadruku, **całe ramiona w kadrze** (ucięte ramię
+zostawia przezroczysty pas przy karcie w układzie `rich`).

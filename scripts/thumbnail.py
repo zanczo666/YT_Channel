@@ -10,6 +10,10 @@ Motyw w tle (`--motif`), rysowany pod tekstem i twarzą, przyciemniony po stroni
 - `candles` — świece z tym samym przebiegiem, `funnel` — słupki lejka malejące etap po etapie, `none`.
 Motyw jest dekoracyjny: bez osi z wartościami i bez liczb. Realny przebieg: `--equity-csv` (jedna kolumna equity).
 
+Układ `--layout rich` (bogatsza miniatura): tekst u góry po lewej, pod nim świecąca, lekko obrócona karta
+ze zrzutem ekranu (`--screen` — raport MT5, wykres z Pythona, terminal) albo syntetycznym panelem backtestu,
+twarz z poświatą, odznaka werdyktu ✓/✗ i odręczna przerywana strzałka od tekstu do karty.
+
 Wymaga Pillow (uruchamiać `python3`, nie `python3 -I`).
 
 Przykład:
@@ -28,7 +32,7 @@ import sys
 import zlib
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 W, H = 1280, 720
 FONT_BOLD = "/usr/share/fonts/opentype/urw-base35/NimbusSansNarrow-Bold.otf"
@@ -213,6 +217,168 @@ def draw_label(img: Image.Image, label: str, accent) -> None:
     d.text((40 + pad, 36 + pad - 4), label, font=font, fill=BG)
 
 
+# --- Układ „rich” -------------------------------------------------------------
+
+
+def rich_background(accent) -> Image.Image:
+    """Granatowe tło z kolorową poświatą (akcent) po lewej i delikatną siatką."""
+    img = Image.new("RGB", (W, H), BG)
+    glow = Image.new("RGB", (W, H), accent)
+    mask = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(mask).ellipse([-200, 120, 820, 900], fill=75)
+    img.paste(glow, (0, 0), mask.filter(ImageFilter.GaussianBlur(160)))
+    d = ImageDraw.Draw(img)
+    for x in range(0, W, 48):
+        d.line([(x, 0), (x, H)], fill=GRID, width=1)
+    for y in range(0, H, 48):
+        d.line([(0, y), (W, y)], fill=GRID, width=1)
+    return img
+
+
+def synthetic_panel(size, verdict: str, accent, seed: int, csv_path: Path | None, label: str) -> Image.Image:
+    """Panel „raportu backtestu”: pasek okna, krzywa equity z podziałem IS/OOS — bez liczb."""
+    w, h = size
+    panel = Image.new("RGBA", size, (16, 24, 38, 255))
+    d = ImageDraw.Draw(panel)
+    d.rectangle([0, 0, w, 44], fill=(24, 34, 52, 255))
+    for i, c in enumerate([(255, 95, 86), (255, 189, 46), (39, 201, 63)]):
+        d.ellipse([18 + i * 26, 15, 32 + i * 26, 29], fill=c + (255,))
+    font = ImageFont.truetype(FONT_LABEL, 20)
+    d.text((110, 11), label or "BACKTEST REPORT", font=font, fill=(170, 182, 200, 255))
+    top, bottom, x0, x1 = 80, h - 30, 24, w - 24
+    for gy in range(top, bottom, 40):
+        d.line([(x0, gy), (x1, gy)], fill=(34, 46, 66, 255), width=1)
+    ys = equity_path(verdict, 140, seed, csv_path, 0.6)
+    xs = [x0 + (x1 - x0) * i / (len(ys) - 1) for i in range(len(ys))]
+    py = [bottom - (bottom - top) * y for y in ys]
+    area = Image.new("RGBA", size, (0, 0, 0, 0))   # wypełnienie półprzezroczyste — mieszane, nie nadpisywane
+    ImageDraw.Draw(area).polygon([(xs[0], bottom)] + list(zip(xs, py)) + [(xs[-1], bottom)], fill=accent + (55,))
+    panel.alpha_composite(area)
+    d.line(list(zip(xs, py)), fill=accent + (255,), width=6, joint="curve")
+    sx = x0 + int((x1 - x0) * 0.6)
+    for y in range(top - 20, bottom, 16):
+        d.line([(sx, y), (sx, y + 8)], fill=(200, 210, 225, 200), width=2)
+    small = ImageFont.truetype(FONT_LABEL, 18)
+    d.text((sx - 12 - small.getlength("IN-SAMPLE"), top - 26), "IN-SAMPLE", font=small, fill=(200, 210, 225, 220))
+    d.text((sx + 12, top - 26), "OUT-OF-SAMPLE", font=small, fill=(200, 210, 225, 220))
+    return panel
+
+
+def place_card(img: Image.Image, content: Image.Image, box, accent, angle: float = -3.0) -> tuple[int, int, int, int]:
+    """Karta z zaokrąglonymi rogami, świecącą ramką w kolorze akcentu i cieniem; zwraca jej prostokąt."""
+    x0, y0, x1, y1 = box
+    w, h = x1 - x0, y1 - y0
+    card = ImageOps.fit(content.convert("RGBA"), (w, h))
+    mask = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, w - 1, h - 1], 26, fill=255)
+    card.putalpha(mask)
+    pad = 40
+    frame = Image.new("RGBA", (w + 2 * pad, h + 2 * pad), (0, 0, 0, 0))
+    fd = ImageDraw.Draw(frame)
+    fd.rounded_rectangle([pad - 6, pad - 6, pad + w + 6, pad + h + 6], 30, outline=accent + (255,), width=10)
+    frame = frame.filter(ImageFilter.GaussianBlur(12))   # poświata
+    shadow = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).rounded_rectangle([pad + 10, pad + 18, pad + w + 10, pad + h + 18], 30, fill=(0, 0, 0, 170))
+    frame = Image.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(14)), frame)
+    frame.alpha_composite(card, (pad, pad))
+    ImageDraw.Draw(frame).rounded_rectangle([pad - 2, pad - 2, pad + w + 1, pad + h + 1], 28,
+                                            outline=accent + (255,), width=4)
+    frame = frame.rotate(angle, resample=Image.BICUBIC, expand=True)
+    fx, fy = x0 - (frame.width - w) // 2, y0 - (frame.height - h) // 2
+    img.paste(frame, (fx, fy), frame)
+    return x0, y0, x1, y1
+
+
+def place_face_glow(img: Image.Image, face_path: Path, accent) -> int:
+    """Większa twarz po prawej z miękką poświatą zamiast twardego obrysu; zwraca lewą krawędź."""
+    face = Image.open(face_path).convert("RGBA")
+    face.thumbnail((int(W * 0.46), int(H * 1.08)))
+    x, y = W - face.width + 30, H - face.height
+    # Zdjęcie ucięte ramką kadru (np. ramię przy lewej krawędzi) — wygaszamy krawędź, żeby nie było „cięcia”.
+    alpha = face.split()[-1]
+    if alpha.crop((0, 0, 2, face.height)).getextrema()[1] > 0:
+        ramp = Image.linear_gradient("L").rotate(90).resize((90, face.height)).transpose(Image.FLIP_LEFT_RIGHT)
+        fade = Image.new("L", face.size, 255)
+        fade.paste(ramp, (0, 0))
+        face.putalpha(ImageChops.multiply(alpha, fade))
+    halo = Image.new("RGBA", face.size, accent + (0,))
+    halo.putalpha(face.split()[-1].point(lambda v: 255 if v > 200 else 0).filter(ImageFilter.MaxFilter(21)).filter(ImageFilter.GaussianBlur(18))
+                  .point(lambda v: int(v * 0.8)))
+    img.paste(halo, (x, y), halo)
+    img.paste(face, (x, y), face)
+    return x
+
+
+def draw_badge(img: Image.Image, center, verdict: str, accent) -> None:
+    """Okrągła odznaka werdyktu: ✓ (pass), ✗ (fail), ? (neutral) — rysowana, niezależna od fontu."""
+    cx, cy, r = center[0], center[1], 52
+    d = ImageDraw.Draw(img)
+    d.ellipse([cx - r - 6, cy - r - 6, cx + r + 6, cy + r + 6], fill=(255, 255, 255))
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=accent)
+    if verdict == "pass":
+        d.line([(cx - 24, cy + 2), (cx - 6, cy + 22), (cx + 26, cy - 20)], fill=(255, 255, 255), width=13, joint="curve")
+    elif verdict == "fail":
+        d.line([(cx - 22, cy - 22), (cx + 22, cy + 22)], fill=(255, 255, 255), width=13)
+        d.line([(cx - 22, cy + 22), (cx + 22, cy - 22)], fill=(255, 255, 255), width=13)
+    else:
+        f = ImageFont.truetype(FONT_BOLD, 80)
+        d.text((cx - f.getlength("?") / 2, cy - 46), "?", font=f, fill=(255, 255, 255))
+
+
+def draw_arrow(img: Image.Image, start, end) -> None:
+    """Odręczna, przerywana strzałka (krzywa Béziera) od tekstu do karty."""
+    d = ImageDraw.Draw(img)
+    (x0, y0), (x1, y1) = start, end
+    cx, cy = x0 + (x1 - x0) * 0.9, y0 - 10
+    pts = [((1 - t) ** 2 * x0 + 2 * (1 - t) * t * cx + t * t * x1,
+            (1 - t) ** 2 * y0 + 2 * (1 - t) * t * cy + t * t * y1) for t in [i / 40 for i in range(41)]]
+    for i in range(0, len(pts) - 1, 2):
+        d.line([pts[i], pts[i + 1]], fill=(255, 255, 255), width=6)
+    # Grot w kierunku ostatniego odcinka.
+    import math
+    ang = math.atan2(y1 - pts[-3][1], x1 - pts[-3][0])
+    for da in (2.6, -2.6):
+        d.line([(x1, y1), (x1 + 30 * math.cos(ang + da), y1 + 30 * math.sin(ang + da))], fill=(255, 255, 255), width=6)
+
+
+def render_rich(a, accent) -> Image.Image:
+    img = rich_background(accent)
+    face_x = face_left_x_rich(a.face) if a.face else W - 60
+    seed = zlib.crc32(a.text.encode())
+    card_box = (60, 300, min(face_x + 70, W - 80), 660)
+    cw, ch = card_box[2] - card_box[0], card_box[3] - card_box[1]
+    content = Image.open(a.screen) if a.screen else synthetic_panel((cw, ch), a.verdict, accent, seed,
+                                                                     a.equity_csv, a.label.upper())
+    place_card(img, content, card_box, accent)
+    if a.face:
+        place_face_glow(img, a.face, accent)
+    draw_badge(img, (card_box[2] - 30, card_box[1] + 4), a.verdict, accent)
+    # Tekst u góry po lewej, max 2 linie.
+    d = ImageDraw.Draw(img)
+    lines = parse_lines(a.text)
+    left, max_w = 56, (face_x - 56 - 30) if a.face else int(W * 0.8)
+    font = fit_font(lines, max_w, 250)
+    lh, y = int(font.size * 1.0), 34
+    space, end_x = font.getlength(" "), left
+    for ln in lines:
+        x = left
+        for word, hot in ln:
+            d.text((x + 4, y + 5), word, font=font, fill=(0, 0, 0))
+            d.text((x, y), word, font=font, fill=accent if hot else TEXT)
+            x += font.getlength(word) + space
+        end_x = max(end_x, x)
+        y += lh
+    if a.arrow:
+        draw_arrow(img, (min(end_x, max_w) - 40, y + 4), (card_box[0] + cw // 2, card_box[1] - 14))
+    return img
+
+
+def face_left_x_rich(face_path: Path) -> int:
+    face = Image.open(face_path).copy()
+    face.thumbnail((int(W * 0.46), int(H * 1.08)))
+    return W - face.width + 30
+
+
 def save_jpg(img: Image.Image, out: Path) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     for q in (92, 88, 84, 80, 75, 70):
@@ -231,6 +397,9 @@ def main() -> int:
     ap.add_argument("--bg", type=Path)
     ap.add_argument("--motif", choices=["equity", "candles", "funnel", "none"], default="equity")
     ap.add_argument("--equity-csv", type=Path, help="realna krzywa kapitału (jedna kolumna)")
+    ap.add_argument("--layout", choices=["simple", "rich"], default="simple")
+    ap.add_argument("--screen", type=Path, help="rich: zrzut ekranu na karcie (bez = syntetyczny panel backtestu)")
+    ap.add_argument("--arrow", action="store_true", help="rich: przerywana strzałka od tekstu do karty")
     ap.add_argument("--out", required=True, type=Path)
     a = ap.parse_args()
 
@@ -238,13 +407,16 @@ def main() -> int:
     if words > 5:
         print(f"UWAGA: {words} słów na miniaturze — standard to 2–4.", file=sys.stderr)
     accent = ACCENTS[a.verdict]
-    img = base_background(a.bg)
-    draw_motif(img, a.motif, a.verdict, accent, zlib.crc32(a.text.encode()), a.equity_csv,
-               face_left_x(a.face) if a.face else None)
-    face_x = place_face(img, a.face, accent) if a.face else None
-    draw_text(img, a.text, accent, right_edge=face_x)
-    if a.label:
-        draw_label(img, a.label.upper(), accent)
+    if a.layout == "rich":
+        img = render_rich(a, accent)
+    else:
+        img = base_background(a.bg)
+        draw_motif(img, a.motif, a.verdict, accent, zlib.crc32(a.text.encode()), a.equity_csv,
+                   face_left_x(a.face) if a.face else None)
+        face_x = place_face(img, a.face, accent) if a.face else None
+        draw_text(img, a.text, accent, right_edge=face_x)
+        if a.label:
+            draw_label(img, a.label.upper(), accent)
     save_jpg(img, a.out)
     preview = a.out.with_name(a.out.stem + "-podglad-168x94.png")
     img.resize((168, 94), Image.LANCZOS).save(preview)
