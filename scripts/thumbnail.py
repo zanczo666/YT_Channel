@@ -5,6 +5,11 @@ Układ: tekst po lewej (~55%), twarz albo obraz po prawej (~42%), ciemne tło z 
 Kolor akcentu = werdykt: pass (zieleń), fail (czerwień), neutral (bursztyn).
 Wynik: JPG 1280×720 ≤ 2 MB oraz podgląd 168×94 (rozmiar z listy na telefonie) do kontroli czytelności.
 
+Motyw w tle (`--motif`), rysowany pod tekstem i twarzą, przyciemniony po stronie tekstu:
+- `equity` — krzywa kapitału z linią podziału IN-SAMPLE / OUT-OF-SAMPLE (fail: załamanie po OOS, pass: wzrost),
+- `candles` — świece z tym samym przebiegiem, `funnel` — słupki lejka malejące etap po etapie, `none`.
+Motyw jest dekoracyjny: bez osi z wartościami i bez liczb. Realny przebieg: `--equity-csv` (jedna kolumna equity).
+
 Wymaga Pillow (uruchamiać `python3`, nie `python3 -I`).
 
 Przykład:
@@ -16,8 +21,11 @@ Słowa w *gwiazdkach* dostają kolor akcentu; `|` łamie linię.
 from __future__ import annotations
 
 import argparse
+import csv
+import random
 import re
 import sys
+import zlib
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
@@ -46,6 +54,87 @@ def base_background(bg_path: Path | None) -> Image.Image:
     for y in range(0, H, 48):
         d.line([(0, y), (W, y)], fill=GRID, width=1)
     return img
+
+
+def equity_path(verdict: str, n: int, seed: int, csv_path: Path | None, split: float) -> list[float]:
+    """Przebieg krzywej 0..1: z pliku CSV (realne dane) albo syntetyczny wg werdyktu (tylko dekoracja)."""
+    if csv_path:
+        with csv_path.open(encoding="utf-8") as fh:
+            vals = [float(r[0]) for r in csv.reader(fh) if r and re.match(r"^-?[\d.]+$", r[0].strip())]
+        step = max(1, len(vals) // n)
+        vals = vals[::step]
+    else:
+        rnd, v, vals = random.Random(seed), 0.0, []
+        cut = int(n * split)
+        for i in range(n):
+            drift = 0.9 if i < cut else {"fail": -1.6, "pass": 0.8, "neutral": 0.0}[verdict]
+            v += drift + rnd.gauss(0, 1.6)
+            vals.append(v)
+    lo, hi = min(vals), max(vals)
+    return [(x - lo) / (hi - lo or 1) for x in vals]
+
+
+def draw_motif(img: Image.Image, motif: str, verdict: str, accent, seed: int, csv_path: Path | None,
+               right_limit: int | None) -> None:
+    """Motyw tradingowy w tle + przyciemnienie lewej strony pod tekst.
+
+    `right_limit` = lewa krawędź twarzy: kluczowa część motywu (podział IS/OOS, koniec lejka) musi być przed nią."""
+    if motif == "none":
+        return
+    layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    top, bottom, x0, x1 = int(H * 0.22), int(H * 0.88), 0, W
+    split = (right_limit * 0.82 / W) if right_limit else 0.62
+    split_x = x0 + int((x1 - x0) * split)
+    if motif in ("equity", "candles"):
+        pts_n = 46 if motif == "candles" else 160
+        ys = equity_path(verdict, pts_n, seed, csv_path, split)
+        xs = [x0 + (x1 - x0) * i / (len(ys) - 1) for i in range(len(ys))]
+        py = [bottom - (bottom - top) * y for y in ys]
+        if motif == "equity":
+            d.polygon([(xs[0], bottom)] + list(zip(xs, py)) + [(xs[-1], bottom)], fill=accent + (38,))
+            glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            ImageDraw.Draw(glow).line(list(zip(xs, py)), fill=accent + (170,), width=14, joint="curve")
+            layer.alpha_composite(glow.filter(ImageFilter.GaussianBlur(10)))
+            d.line(list(zip(xs, py)), fill=accent + (235,), width=5, joint="curve")
+        else:
+            rnd, cw = random.Random(seed + 1), (x1 - x0) / len(ys) * 0.6
+            for i in range(1, len(ys)):
+                o, c = py[i - 1], py[i]
+                hi_, lo_ = min(o, c) - rnd.uniform(4, 22), max(o, c) + rnd.uniform(4, 22)
+                col = (110, 231, 140, 150) if c < o else (255, 92, 92, 150)
+                d.line([(xs[i], hi_), (xs[i], lo_)], fill=col, width=2)
+                d.rectangle([xs[i] - cw / 2, min(o, c), xs[i] + cw / 2, max(o, c) + 2], fill=col)
+        # Linia podziału próbki — znak rozpoznawczy „laboratorium backtestów”.
+        lab = ImageFont.truetype(FONT_LABEL, 20)
+        for y in range(top - 30, bottom, 18):
+            d.line([(split_x, y), (split_x, y + 9)], fill=(200, 210, 225, 150), width=2)
+        d.text((split_x - 14 - lab.getlength("IN-SAMPLE"), top - 30), "IN-SAMPLE", font=lab, fill=(200, 210, 225, 170))
+        d.text((split_x + 14, top - 30), "OUT-OF-SAMPLE", font=lab, fill=(200, 210, 225, 170))
+    elif motif == "funnel":
+        stages = [1.0, 0.62, 0.38, 0.2, 0.09]
+        fx0, fx1 = W * 0.04, (right_limit - 24) if right_limit else W * 0.96
+        bw = (fx1 - fx0) / (len(stages) * 1.35)
+        gap = bw * 0.35
+        for i, f in enumerate(stages):
+            bx = fx0 + i * (bw + gap)
+            alpha = 210 if i == len(stages) - 1 else 90
+            d.rectangle([bx, bottom - (bottom - top) * f, bx + bw, bottom], fill=accent + (alpha,))
+    img.paste(layer, (0, 0), layer)
+    # Przyciemnienie lewej części, żeby tekst zawsze był czytelny.
+    shade = Image.linear_gradient("L").rotate(90).resize((W, H)).point(lambda v: int(v * 0.85))
+    img.paste(Image.new("RGB", (W, H), BG), (0, 0), shade.transpose(Image.FLIP_LEFT_RIGHT))
+
+
+def face_left_x(face_path: Path) -> int:
+    """Lewa krawędź twarzy po umieszczeniu w kadrze (ta sama geometria co place_face)."""
+    face = Image.open(face_path)
+    box_w = int(W * 0.42)
+    if face.mode in ("RGBA", "LA") or "transparency" in face.info:
+        face = face.copy()
+        face.thumbnail((box_w, H))
+        return W - face.width + 20
+    return W - box_w
 
 
 def place_face(img: Image.Image, face_path: Path, accent: tuple[int, int, int]) -> int:
@@ -140,6 +229,8 @@ def main() -> int:
     ap.add_argument("--verdict", choices=ACCENTS, default="neutral")
     ap.add_argument("--face", type=Path)
     ap.add_argument("--bg", type=Path)
+    ap.add_argument("--motif", choices=["equity", "candles", "funnel", "none"], default="equity")
+    ap.add_argument("--equity-csv", type=Path, help="realna krzywa kapitału (jedna kolumna)")
     ap.add_argument("--out", required=True, type=Path)
     a = ap.parse_args()
 
@@ -148,6 +239,8 @@ def main() -> int:
         print(f"UWAGA: {words} słów na miniaturze — standard to 2–4.", file=sys.stderr)
     accent = ACCENTS[a.verdict]
     img = base_background(a.bg)
+    draw_motif(img, a.motif, a.verdict, accent, zlib.crc32(a.text.encode()), a.equity_csv,
+               face_left_x(a.face) if a.face else None)
     face_x = place_face(img, a.face, accent) if a.face else None
     draw_text(img, a.text, accent, right_edge=face_x)
     if a.label:

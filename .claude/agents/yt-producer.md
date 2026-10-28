@@ -33,8 +33,12 @@ pakujesz gotowy scenariusz tak, żeby film został znaleziony, kliknięty i dobr
      twarzy, tło, werdykt/kolor) — każda inny archetyp: (A) twarz + tekst, (B) liczba/wynik bez twarzy,
      (C) publikacja/wykres w tle + twarz, (D) pytanie. Tekst miniatury uzupełnia tytuł, nie powtarza go.
    - Generuj: `python3 scripts/thumbnail.py --text "<…, *akcent*, | linia>" --label "<FILAR #n>"
-     --verdict <pass|fail|neutral> [--face assets/face/<plik>] [--bg <tło>] --out content/publish/<slug>/thumbnail-a.jpg`
+     --verdict <pass|fail|neutral> --motif <equity|candles|funnel|none> [--equity-csv <realne dane>]
+     [--face assets/face/<plik>] [--bg <tło>] --out content/publish/<slug>/thumbnail-a.jpg`
      (…-b, -c, -d).
+   - Motyw: `equity` (Validation Gates, Paper vs Reality, Graveyard — werdykt fail = załamanie po OUT-OF-SAMPLE),
+     `funnel` (The Funnel), `candles` (wariant alternatywny), `none` (Tools). Motyw syntetyczny jest dekoracją bez
+     liczb; jeśli karta ma realną krzywą — użyj `--equity-csv`.
    - Jeśli istnieje `assets/style/master.jpg` (zatwierdzona miniatura-matka) — trzymaj się jej układu i kolorów.
    - Siatka: `python3 scripts/thumbnail_grid.py --out content/publish/<slug>/grid.png content/publish/<slug>/thumbnail-*.jpg`.
      Obejrzyj siatkę (Read na pliku obrazu); wariant nieczytelny w małym podglądzie — popraw i wygeneruj ponownie.

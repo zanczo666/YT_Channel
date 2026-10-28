@@ -50,7 +50,10 @@ względem mediany kanału) to tytuły sceptyczne z twardą liczbą i testem w 1.
 **Nasz szablon (render: `scripts/thumbnail.py`):**
 1. Układ: **tekst po lewej (≈55%), twarz po prawej (≈40%)**; bez twarzy — duża liczba/wykres po prawej.
 2. Tekst: **2–4 słowa**, max 2 linie, jedno słowo w kolorze akcentu. Font: wąski, bold.
-3. Tło: ciemne (granat/grafit) z wykresem equity, fragmentem publikacji albo tabelą lejka — przyciemnione.
+3. Tło: ciemne (granat/grafit) + **motyw tradingowy** (`--motif`): krzywa equity z podziałem IN-SAMPLE /
+   OUT-OF-SAMPLE (fail = załamanie po OOS, pass = wzrost), świece albo słupki lejka. Kluczowy fragment (podział,
+   załamanie) zawsze między tekstem a twarzą; strona tekstu przyciemniona. Motyw syntetyczny = dekoracja bez
+   liczb i osi z wartościami; realny przebieg tylko z danych karty (`--equity-csv`).
 4. Kolor marki stały w każdej miniaturze (akcent: zieleń „PASS” / czerwień „FAIL” — kolor = werdykt).
 5. Czytelność sprawdzana na podglądzie **168×94** (rozmiar z listy na telefonie).
 6. Seria = rozpoznawalny element: etykieta filaru w rogu (np. `GRAVEYARD`, `PAPER vs REALITY`, `FUNNEL #3`).
