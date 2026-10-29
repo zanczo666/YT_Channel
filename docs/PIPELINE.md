@@ -16,9 +16,15 @@ Czego **nie da się** (dziś) zautomatyzować w 100% — i dlaczego:
 
 ## Decyzje (2026-10-29)
 - **Bramki:** 2 — akceptacja scenariusza i podglądu prywatnego filmu.
-- **Render:** VPS `claudecore` (fabryka EA działa na innych serwerach). Bez limitów CPU; **tylko limit pamięci
-  i niski priorytet** (`MemoryMax`, `nice`/`ionice`) — na serwerze działa kilkanaście sesji Claude Code
-  (~300 MB każda, ~5 z 7 GB RAM zajęte), a transkrypcja + render bez limitu mogłyby je ubić (OOM).
+- **Render: worker on-demand w Hetznerze** (decyzja 2026-10-29; zastępuje wcześniejszy plan „render na
+  `claudecore` z `MemoryMax`”). `claudecore` zostaje **orkiestratorem** (maszyna stanów, bot Discord,
+  `inbox/` Syncthing), a transkrypcja i render idą na **jednorazową maszynę** stawianą z API i kasowaną po
+  zadaniu. Powód: na `claudecore` działa kilkanaście sesji Claude Code (~300 MB każda, ~5 z 7 GB RAM) —
+  ciężkie kroki mogłyby je ubić (OOM), a limity pamięci to ryzyko tylko ograniczają, zamiast je usunąć.
+  Parametry maszyny i kolejność prób: **G3**.
+- **Rozliczenie Hetznera: pełna rozpoczęta godzina** (bez naliczania minutowego) → nie optymalizujemy czasu
+  poniżej godziny, za to **oba filmy z jednej sesji nagraniowej montujemy w jednym uruchomieniu** workera
+  (jedna płatna godzina na dwa filmy). Koszt: ~0,27 € za przebieg, ~7 € rocznie.
 - **Przesył:** Syncthing — z telefonu i z komputera (OBS zapisuje do synchronizowanego folderu); jeden `inbox/`.
 - **Powiadomienia i akceptacje:** Discord — prywatny serwer, bot na VPS z przyciskami Akceptuj/Popraw.
 
@@ -51,11 +57,11 @@ idempotentny, logowany, z powiadomieniem przy błędzie.
 | B3 | Automatyczny przesył | ⬜ | **Syncthing** (darmowy, bez chmury): telefon i komputer (OBS) → VPS `inbox/`; runner wykrywa nowe pliki |
 | B4 | Sesje seriami | ⬜ | 2 scenariusze na sesję co 2 tygodnie |
 
-### C. Postprodukcja (VPS, lekko, z limitami zasobów)
+### C. Postprodukcja (worker on-demand — patrz G3)
 | # | Element | Status | Opis |
 |---|---|---|---|
 | C1 | Ingest | ⬜ | ffprobe, kopia, normalizacja do 1080p/30 CFR, wyciągnięcie audio |
-| C2 | Transkrypcja słowo po słowie | ⬜ | faster-whisper (CPU, int8), lokalnie |
+| C2 | Transkrypcja słowo po słowie | ⬜ | faster-whisper (CPU, int8) na workerze; wagi modelu w snapshocie, nie pobierane przy każdym starcie |
 | C3 | Dopasowanie do scenariusza | ⬜ | słowa ↔ ID zdań (fuzzy), **ostatnie czyste ujęcie** każdego zdania, wycięcie pauz/powtórek; raport „co wycięto” |
 | C4 | Lista cięć + oś czasu | ⬜ | EDL/FCPXML dla DaVinci (ręczna poprawka opcjonalna) + render automatyczny FFmpeg |
 | C5 | Dźwięk | ⬜ | filtr górnoprzepustowy, odszumianie, kompresja, **loudnorm −14 LUFS**, muzyka pod głosem z duckingiem |
@@ -64,7 +70,7 @@ idempotentny, logowany, z powiadomieniem przy błędzie.
 | C8 | Napisy | ⬜ | SRT EN (tekst ze scenariusza, czasy z nagrania) + SRT PL (kolumna PL) |
 | C9 | Rozdziały | ⬜ | timestampy sekcji z rzeczywistego montażu → opis |
 | C10 | Intro/outro i plansza końcowa | ⬜ | 3 s identyfikacji marki + 20 s tła pod planszę końcową |
-| C11 | Render | ⬜ | 1080p H.264 (YouTube rekomendacje), w oknie bez obciążenia fabryki, `CPUQuota`/`MemoryMax`, szkic w ½ rozdzielczości |
+| C11 | Render | ⬜ | 1080p H.264 (YouTube rekomendacje) na workerze on-demand (G3) — pełne 8 rdzeni, bez limitów CPU i pamięci; szkic w ½ rozdzielczości tylko do szybkiego podglądu |
 | C12 | QC automatyczne | ⬜ | rozdzielczość, sync A/V, czarne klatki, cisza, głośność (EBU R128), długość, rozmiar; Claude ogląda klatki co N s (grafika na twarzy, mignięcia) |
 | C13 | Shorts | ⬜ | 3–5 × 9:16 z zakresów ID, napisy wypalone słowo po słowie, link do filmu |
 
@@ -101,7 +107,10 @@ idempotentny, logowany, z powiadomieniem przy błędzie.
 |---|---|---|---|
 | G1 | Runner + stan | ⬜ | timer systemd, `status.json`, idempotentne kroki, ponawianie |
 | G2 | Powiadomienia i akceptacje | ⬜ | Discord: bot na VPS (prywatny serwer, kanał #produkcja), przyciski Akceptuj/Popraw, uwagi w wątku |
-| G3 | Zasoby VPS | ⬜ | ciężkie kroki przez `systemd-run -p MemoryMax=…` + `nice/ionice` (ochrona sesji Claude Code przed OOM); bez limitu CPU |
+| G3 | Worker on-demand (Hetzner) | ⬜ | **CCX33** — 8 dedykowanych vCPU AMD, 32 GB RAM, 240 GB NVMe, €0,273/h (General Purpose: brak „limited availability”). **Ubuntu 24.04 LTS** (ta sama wersja co `claudecore` — debugujemy lokalnie, uruchamiamy zdalnie). Start ze **snapshotu** (FFmpeg + venv `faster-whisper` + wagi modelu), x86 → ten sam obraz działa na wszystkich wariantach fallbacku. Dane przez `rsync` po SSH, **bez volume** (volume podpina się tylko do jednej maszyny naraz i jest przywiązany do lokalizacji). Dostęp: wyłącznie klucz SSH, firewall inbound = SSH tylko z IP `claudecore` |
+| G3a | Kolejność prób (fallback) | ⬜ | Typ ważniejszy niż lokalizacja (opóźnienie między DC nie ma znaczenia dla `rsync`, przewidywalność rdzeni ma): `CCX33 fsn1` → `CCX33 hel1` → `CCX33 nbg1` → `CPX42 fsn1` → `CX43 fsn1`. Dwa ostatnie to współdzielone vCPU: wolniej i taniej, ale produkcja nie staje. Lokalizacje spoza eu-central pomijamy (dopłata, odległość) |
+| G7 | Watchdog kosztów | ⬜ | Kasowanie workera zaraz po zadaniu; **przy błędzie maszyna żyje do ~55. minuty** (diagnostyka w już opłaconej godzinie), potem niezależny timer na `claudecore` kasuje każdy serwer z etykietą `yt-worker` starszy niż 1 h. Lekcja z fabryki EA: serwer nieusunięty po błędzie płaci dalej |
+| G8 | Logi workera | ⬜ | Log i artefakty każdego kroku `rsync`-iem na `claudecore` **na bieżąco**, nie na końcu — maszyna znika razem ze swoim dyskiem |
 | G4 | Magazyn i retencja | ⬜ | surowe pliki usuwane 30 dni po publikacji (kopia u Ciebie/Drive), monitoring dysku |
 | G5 | Sekrety | 🟡 | klucze w `~/.config/yt_channel/` (600); dodać token OAuth (odświeżany) — nigdy w repo/logach |
 | G6 | Uruchamianie agentów bez czatu | ⬜ | `claude -p` (tryb nieinteraktywny) wywoływany przez runner dla scenariusza/opakowania |
@@ -110,14 +119,18 @@ idempotentny, logowany, z powiadomieniem przy błędzie.
 | Etap | Zakres | Efekt |
 |---|---|---|
 | **0. Fundament** | F1–F7, D4 (wniosek o audyt), B2, B3 | kanał gotowy wizualnie i prawnie; nagrania same trafiają na serwer |
-| **1. MVP „nagranie → prywatny film”** | C1–C5, C8–C12, D3, G1, G3 | z jednego nagrania: zmontowany film 1080p z napisami EN/PL, rozdziałami, pakietem i wgraniem prywatnym |
+| **1. MVP „nagranie → prywatny film”** | C1–C5, C8–C12, D3, G1, G3, G7, G8 | z jednego nagrania: zmontowany film 1080p z napisami EN/PL, rozdziałami, pakietem i wgraniem prywatnym |
 | **2. Grafiki i shorts** | C6, C7, C13, A1 (dane) | ekrany i wykresy z danych fabryki, shorts automatycznie |
 | **3. Orkiestracja** | A2, A3, G2, G6, B4 | kalendarz, bufor, akceptacje z telefonu, praca seriami |
 | **4. Pętla wzrostu** | E1–E3, A5 | analityka → reguły, komentarze, newsletter, biblioteka haków |
 | **5. Opcjonalnie** | miniatury AI (opcja 2), 4K, zaawansowany motion design | po 5–10 filmach, na danych z testów A/B |
 
 ## 5. Ryzyka
-- **Pamięć VPS** (sesje Claude Code) → limit pamięci dla transkrypcji/renderu; przy wzroście kanału ewentualnie więcej RAM.
+- ~~**Pamięć VPS** (sesje Claude Code)~~ → **rozwiązane** przeniesieniem ciężkich kroków na workera on-demand (G3);
+  na `claudecore` zostaje sama orkiestracja.
+- **Niedostępność typu lub lokalizacji** przy stawianiu maszyny z API (`resource_unavailable`) → łańcuch fallbacku G3a.
+- **Wyciek kosztów** — worker nieusunięty po błędzie nalicza kolejne godziny → watchdog G7 (niezależny od pipeline'u).
+- **Utrata logów** razem ze skasowaną maszyną → G8 (logi wypychane na bieżąco).
 - **Audyt API** może potrwać tygodnie → do tego czasu publikacja jednym kliknięciem.
 - **Jakość dźwięku** to największa dźwignia jakości przy 0 zł → standard nagrania, potem ewentualnie mikrofon krawatowy.
 - **Koszt tokenów** przy grafikach → szablony wielokrotnego użytku zamiast generowania od zera.
