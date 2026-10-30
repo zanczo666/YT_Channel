@@ -56,6 +56,8 @@ miniatury → makieta feedu → decyzja. Do tego `libraqm` dla Pillow (kerning i
 - **Obrys i rim light** w kolorze werdyktu (wzór Paddy Galloway: wycięta twarz z obrysem = rozpoznawalność).
 - Opcjonalnie upscaling Real-ESRGAN (BSD) lub poprawa twarzy GFPGAN (Apache 2.0) — na CPU wolne, uruchamiać
   przez `systemd-run -p MemoryMax=…`. **CodeFormer odpada** (licencja niekomercyjna S-Lab).
+- Test 2026-10-30: BiRefNet potrzebuje 7,6–9,3 GB RAM — na VPS odpada; zamiast niego `u2net` + `--defringe`
+  (wyniki niżej).
 - Najtańsza i najskuteczniejsza poprawa: **nowa sesja zdjęć** wg uwag w `face_lock.md` (wysokość oczu,
   pełne ramiona, gładka koszulka). Żadna biblioteka nie naprawi złego kąta kamery.
 
@@ -160,5 +162,32 @@ czytamy całość, instalujemy w zakresie projektu, nigdy nie dajemy mu dostępu
   4. **Mapa uwagi:** biała linia tekstu przyciąga więcej uwagi niż czerwone słowo-akcent (czerwień ma niską
      luminancję). Heurystyka, nie wyrocznia — ale argument za jaśniejszym akcentem lub większym słowem-akcentem.
   5. Fonty: Anton i Archivo Black najmocniejsze w `simple`; Barlow Condensed — spokojniejszy, „analityczny”.
-- Czeka: testy twarzy (wycinanie `u2net_human_seg` vs `birefnet-portrait`, dopasowanie koloru, obrys) — connector
-  Google Drive nie miał uprawnień, zdjęcia do przesłania inną drogą.
+
+## Testy twarzy (2026-10-30, 3 zdjęcia z Google Drive, pliki tylko w scratchpadzie sesji — nie w repo)
+- **Wycinanie — pamięć i jakość** (zdjęcie 1200×1600, CPU):
+
+  | Model | Szczyt RAM | Czas | Krawędź |
+  |---|---|---|---|
+  | `u2net_human_seg` (obecny) | ~0,9 GB | 3 s | jasna obwódka z tła (ściana) na głowie i uchu |
+  | `u2net_human_seg` + `--defringe 3` | ~0,9 GB | 3 s | **czysta — porównywalna z BiRefNet** |
+  | `isnet-general-use` + defringe | ~1,1 GB | 9 s | czysta |
+  | `birefnet-general-lite` | ~7,6 GB | 41 s | — |
+  | `birefnet-portrait` | ~9,3 GB | 40–50 s | czysta |
+
+  **Wniosek: BiRefNet odpada na VPS** (7 GB RAM, ~5 GB zajęte przez sesje). Zostajemy przy `u2net_human_seg`
+  z nowym czyszczeniem krawędzi (`face_cutout.py --defringe`, domyślnie 3 px). Punkt 1.5 analizy — poprawiony.
+- **`thumbnail.py --face-zoom`** — kadr głowa + barki wokół głowy: twarz w kadrze ~2× większa, biała koszulka
+  prawie znika. Najbardziej widoczna poprawa z całego testu.
+- **`thumbnail.py --grade`** — lekkie ochłodzenie/kontrast + światło konturowe w kolorze werdyktu; efekt
+  subtelny, przy obrysie w układzie `simple` prawie niewidoczny, lepiej widać w `rich`.
+- **Kontrola** wskazała białą koszulkę jako najjaśniejszy element kadru, leżący pod znacznikiem czasu
+  (strefa czasu: WARN we wszystkich wariantach bez `--face-zoom`).
+- **Uwagi do następnej sesji zdjęć** (uzupełnienie `assets/face/face_lock.md`):
+  1. **Ciemna, gładka koszulka** (granat/grafit) zamiast białej z dużym nadrukiem — biel jest najjaśniejszym
+     punktem kadru i odciąga uwagę od twarzy; nadruk rozprasza.
+  2. **Ramiona w całości w kadrze** — na wszystkich 3 zdjęciach ramiona są ucięte krawędzią zdjęcia; przy
+     powiększeniu zostaje półprzezroczysty pas w miejscu cięcia (widoczny w rogu miniatur z `--face-zoom`).
+  3. **Telefon na wysokości oczu** — przy zdjęciu z miną neutralną kamera jest nisko (widok od dołu).
+  4. Miny: zdjęcie z uniesionymi brwiami najlepiej pasuje do FAIL / „Now what?”; poważne — do pytań
+     („Too good to be true?”); neutralne z lekkim uśmiechem — do PASS. Komplet z `face_lock.md` się sprawdza.
+  5. Tło: jednolita jasna ściana jest dobra do wycinania — zostawić.

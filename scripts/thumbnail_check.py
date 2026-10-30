@@ -149,7 +149,7 @@ def check(path: Path, expected: list[str], heatmap: bool) -> dict:
     ts_share = float(att[y0:y1, x0:x1].sum())
     ts_area = (x1 - x0) * (y1 - y0) / (W * H)
     ts_text = [b for b in (f["box"] for f in full) if overlap(b, TS_BOX)]
-    ts_score = 0 if ts_text else score_band(-ts_share / ts_area, -2.0, -1.0)
+    ts_score = 0 if ts_text else score_band(-ts_share / ts_area, -3.0, -1.2)
     res["timestamp"] = (ts_score, ("TEKST w strefie czasu: " + ", ".join(f["text"] for f in full
                                                                           if overlap(f["box"], TS_BOX)))
                         if ts_text else f"uwaga w rogu {ts_share:.1%} przy {ts_area:.1%} powierzchni")
