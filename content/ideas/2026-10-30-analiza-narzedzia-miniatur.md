@@ -214,3 +214,24 @@ Wnioski z makiety feedu:
 - Propozycja: 3 koncepcje jako **stałe szablony serii** (np. `paper` = Paper vs Reality, `stamp` = Graveyard,
   `split` lub `closeup` = Validation Gates) zamiast jednego szablonu do wszystkiego; rozpoznawalność daje
   seria, a nie identyczny układ każdej miniatury.
+
+## Złożone sceny (2026-10-30) — `scripts/thumbnail_scenes.py` (HTML/SVG → Chromium)
+Pillow nie udźwignie perspektywy 3D, szkła, setek półprzezroczystych ścieżek i warstw — sceny są budowane
+jako HTML/SVG i renderowane przez Playwright (punkt 1.7 analizy, teraz uzasadniony).
+
+| Scena | Co pokazuje | Twarz | Filar |
+|---|---|---|---|
+| `montecarlo` | setki ścieżek kapitału, podświetlony „twój backtest” na skraju rozkładu + histogram | nie | Validation Gates (szczęście vs przewaga) |
+| `landscape` | 3D powierzchnia parametrów: szeroki płaskowyż ROBUST vs wąski szczyt z flagą | nie | Validation Gates (przeuczenie) |
+| `graveyard` | nocny cmentarz: księżyc, wzgórza, nagrobki z wyrytymi krzywymi, mgła | tak | Strategy Graveyard |
+| `dashboard` | szklany dashboard w perspektywie: IS/OOS, mapa parametrów, histogram, bramki ✓/✗ | tak | Validation Gates |
+| `funnel` | izometryczna taśma z bramkami COSTS / OOS / WALK-FORWARD, kostki-pomysły odpadają | nie | The Funnel |
+| `layers` | trzy warstwy 3D: publikacja → kod → wynik z załamaniem | nie | Paper vs Reality |
+
+- Wymaga na VPS: `pip install playwright && playwright install chromium` (~150 MB dysku, ~300 MB RAM na czas
+  renderu, kilka sekund na miniaturę). `--keep-html` zapisuje HTML do ręcznych poprawek w przeglądarce.
+- Kontrola: nagłówki w scenach są mniejsze niż w szablonie (scena potrzebuje miejsca) — OCR na 168×94 odczytuje
+  część słów (montecarlo, landscape); wizualnie czytelne, ale to kompromis do decyzji (większy tekst vs scena).
+  W `dashboard` biała koszulka znów ląduje w strefie znacznika czasu.
+- Liczba kostek w `funnel` i ścieżek w `montecarlo` jest dekoracyjna — przy realnym odcinku lejka
+  proporcje kostek trzeba brać z karty `funnel/` albo zostawić wyraźnie umowne (bez sugerowania danych).
