@@ -180,11 +180,24 @@ def parse_lines(text: str) -> list[list[tuple[str, bool]]]:
     return lines
 
 
+def line_metrics(font: ImageFont.FreeTypeFont) -> tuple[int, int, int]:
+    """(przesunięcie góry wersalików od punktu rysowania, wysokość wersalików, odstęp linii) — z realnych
+    kształtów liter, nie z rozmiaru fontu, bo fonty różnią się proporcjami (Anton jest dużo wyższy od Nimbusa)."""
+    top, bottom = font.getbbox("HQ")[1::2]
+    cap = bottom - top
+    return top, cap, int(cap * 1.28)
+
+
+def block_height(font, n_lines: int) -> int:
+    _, cap, lh = line_metrics(font)
+    return (n_lines - 1) * lh + cap
+
+
 def fit_font(lines, max_w: int, max_h: int) -> ImageFont.FreeTypeFont:
     for size in range(190, 40, -4):
         font = ImageFont.truetype(FONT_BOLD, size)
         widths = [font.getlength(" ".join(w for w, _ in ln)) for ln in lines]
-        if max(widths) <= max_w and len(lines) * size * 1.02 <= max_h:
+        if max(widths) <= max_w and block_height(font, len(lines)) <= max_h:
             return font
     return ImageFont.truetype(FONT_BOLD, 40)
 
@@ -194,9 +207,9 @@ def draw_text(img: Image.Image, text: str, accent, right_edge: int | None) -> No
     lines = parse_lines(text)
     left = 56
     max_w = (right_edge - left - 30) if right_edge else int(W * 0.88)
-    font = fit_font(lines, max_w, int(H * 0.62))
-    lh = int(font.size * 1.02)
-    y = (H - lh * len(lines)) // 2 + 20
+    font = fit_font(lines, max_w, int(H * 0.5))
+    top, _, lh = line_metrics(font)
+    y = (H - block_height(font, len(lines))) // 2 + 20 - top
     space = font.getlength(" ")
     for ln in lines:
         x = left
@@ -357,8 +370,9 @@ def render_rich(a, accent) -> Image.Image:
     d = ImageDraw.Draw(img)
     lines = parse_lines(a.text)
     left, max_w = 56, (face_x - 56 - 30) if a.face else int(W * 0.8)
-    font = fit_font(lines, max_w, 250)
-    lh, y = int(font.size * 1.0), 34
+    font = fit_font(lines, max_w, 205)
+    top, cap, lh = line_metrics(font)
+    y = 44 - top
     space, end_x = font.getlength(" "), left
     for ln in lines:
         x = left
@@ -369,7 +383,7 @@ def render_rich(a, accent) -> Image.Image:
         end_x = max(end_x, x)
         y += lh
     if a.arrow:
-        draw_arrow(img, (min(end_x, max_w) - 40, y + 4), (card_box[0] + cw // 2, card_box[1] - 14))
+        draw_arrow(img, (min(end_x, max_w) - 40, y - lh + top + cap + 14), (card_box[0] + cw // 2, card_box[1] - 14))
     return img
 
 
@@ -400,8 +414,12 @@ def main() -> int:
     ap.add_argument("--layout", choices=["simple", "rich"], default="simple")
     ap.add_argument("--screen", type=Path, help="rich: zrzut ekranu na karcie (bez = syntetyczny panel backtestu)")
     ap.add_argument("--arrow", action="store_true", help="rich: przerywana strzałka od tekstu do karty")
+    ap.add_argument("--font", type=Path, help="font nagłówka (domyślnie Nimbus Sans Narrow Bold), np. assets/fonts/Anton-Regular.ttf")
     ap.add_argument("--out", required=True, type=Path)
     a = ap.parse_args()
+    if a.font:
+        global FONT_BOLD
+        FONT_BOLD = str(a.font)
 
     words = len(re.findall(r"[^\s|*]+", a.text))
     if words > 5:

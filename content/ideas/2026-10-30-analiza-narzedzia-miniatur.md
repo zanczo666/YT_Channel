@@ -143,3 +143,22 @@ czytamy całość, instalujemy w zakresie projektu, nigdy nie dajemy mu dostępu
 - vidIQ MCP: https://vidiq.com/agent-skills/ , https://outlierkit.com/resources/vidiq-mcp/
 - YouTube Test & Compare: https://support.google.com/youtube/answer/13861714
 - Repozytoria skilli — linki w tabeli powyżej.
+
+## Stan prototypów (2026-10-30, sesja w chmurze, bez zdjęć twarzy)
+- `scripts/thumbnail_check.py` — gotowy prototyp (OCR 168×94 Tesseract, kontrast WCAG, strefa czasu, mapa uwagi
+  OpenCV, reguły). Test: 7 wariantów tekstu „GREAT BACKTEST. / NOW WHAT?” + wariant celowo zły (zakazane „only”,
+  „AI”, kwota, 5 słów) — zły dostał FAIL 0/10 na `rules`, zgodnie z oczekiwaniem.
+- `scripts/thumbnail_feed.py` — makieta feedu (strona główna 3 kolumny + lista 168×94, tryb ciemny i jasny).
+- `scripts/thumbnail.py` — nowa opcja `--font`; wysokość linii liczona z realnych kształtów liter (wcześniej
+  z rozmiaru fontu — Anton w układzie `rich` wchodził na kartę).
+- Wnioski z testu:
+  1. **Anton w układzie `rich` nie przechodzi** OCR na 168×94 (50% słów) — tekst w `rich` jest za mały dla
+     wąskich fontów; w `simple` wszystkie fonty przechodzą.
+  2. **Tryb ciemny:** granatowe miniatury zlewają się z tłem YouTube (#0f0f0f) — brak wyraźnej krawędzi.
+     Do rozważenia: jaśniejsze tło lub poświata akcentu przy krawędzi.
+  3. **Znacznik czasu w `rich`** zasłania koniec krzywej (załamanie OOS = puenta) — kartę przesunąć/skrócić.
+  4. **Mapa uwagi:** biała linia tekstu przyciąga więcej uwagi niż czerwone słowo-akcent (czerwień ma niską
+     luminancję). Heurystyka, nie wyrocznia — ale argument za jaśniejszym akcentem lub większym słowem-akcentem.
+  5. Fonty: Anton i Archivo Black najmocniejsze w `simple`; Barlow Condensed — spokojniejszy, „analityczny”.
+- Czeka: testy twarzy (wycinanie `u2net_human_seg` vs `birefnet-portrait`, dopasowanie koloru, obrys) — connector
+  Google Drive nie miał uprawnień, zdjęcia do przesłania inną drogą.
