@@ -191,3 +191,26 @@ czytamy całość, instalujemy w zakresie projektu, nigdy nie dajemy mu dostępu
   4. Miny: zdjęcie z uniesionymi brwiami najlepiej pasuje do FAIL / „Now what?”; poważne — do pytań
      („Too good to be true?”); neutralne z lekkim uśmiechem — do PASS. Komplet z `face_lock.md` się sprawdza.
   5. Tło: jednolita jasna ściana jest dobra do wycinania — zostawić.
+
+## Koncepcje alternatywne (2026-10-30) — `scripts/thumbnail_concepts.py`
+Odpowiedź na uwagę „wszystko na jedno kopyto”: 7 koncepcji o różnej kompozycji, palecie i typografii.
+
+| Koncepcja | Wygląd | Twarz | Pasuje do filaru |
+|---|---|---|---|
+| `paper` | kremowe tło, przechylona strona publikacji z zakreśleniem i odręcznym kółkiem, szeryf + dopisek markerem | nie | Paper vs Reality (w produkcji realna strona: `--page`) |
+| `split` | jasna połowa BACKTEST / ciemna LIVE, postrzępiony szew, twarz na szwie | tak | Validation Gates |
+| `terminal` | pełnoekranowy terminal, monospace, wielki werdykt z kursorem | nie | Validation Gates, Tools |
+| `stamp` | raport na biurku + czerwona pieczątka REJECTED, maszynopis | tak | Strategy Graveyard |
+| `minimal` | biel, jedna „zbyt idealna” linia, krótkie zdanie szeryfem (Veritasium) | nie | Validation Gates (overfitting) |
+| `closeup` | bardzo duża twarz po lewej, ucięta kadrem; po prawej 2 słowa + jedna karta | tak | dowolny — „twarz kanału” |
+| `magnifier` | piękna krzywa, pod lupą poszarpana czerwona prawda | nie | Validation Gates, The Funnel |
+
+Wnioski z makiety feedu:
+- **Jasne koncepcje (`paper`, `minimal`, `split`) najmocniej wyróżniają się w trybie ciemnym** (większość
+  feedu finansowego jest ciemna) — dobry kandydat na wyróżnik kanału; w trybie jasnym działają odwrotnie.
+- Na jasnym tle czerwień marki ma tylko ~3,5:1 kontrastu — koncepcje jasne używają przyciemnionego akcentu.
+- `thumbnail_check.py` daje fałszywy FAIL na `ocr_small` przy tekście obróconym (pieczątka) i przeciętym liniami
+  (terminal) — tam decyduje podgląd 168×94 w siatce.
+- Propozycja: 3 koncepcje jako **stałe szablony serii** (np. `paper` = Paper vs Reality, `stamp` = Graveyard,
+  `split` lub `closeup` = Validation Gates) zamiast jednego szablonu do wszystkiego; rozpoznawalność daje
+  seria, a nie identyczny układ każdej miniatury.
