@@ -1,0 +1,23 @@
+L001  There is one test I run before I trust any trading system.
+
+L002  It takes about ten minutes, and most strategies do not survive it.
+
+L003  Split your historical data into two parts before you start.
+
+L004  Build and tune the strategy on the first part only.
+
+L005  The second part stays closed until the strategy is finished.
+
+L006  Then you run it once on the second part, and you do not touch it again.
+
+L007  Every parameter you tune is a small decision based on the data.
+
+L008  Enough of those decisions and the strategy learns the past by heart.
+
+L009  A curve that looks perfect on known data tells you nothing.
+
+L010  The second half is the only part that was never allowed to vote.
+
+L011  Run this split on your own system this week and see what happens.
+
+L012  Historical results, not investment advice. Past performance does not guarantee future results.
