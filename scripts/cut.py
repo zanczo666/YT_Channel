@@ -28,6 +28,13 @@ import proc  # noqa: E402  — wspólny limiter pamięci
 
 FPS = 30
 SZEROKOSC_DRAFT = 540
+# Sklejka dwóch ujęć tej samej gadającej głowy to skok: postawa i mimika zmieniają się o klatkę.
+# Naprzemienne, delikatne przybliżenie sprawia, że cięcie czyta się jako zamierzone, a nie jako usterka
+# (uwaga właściciela po pierwszym montażu, 2026-11-02: „sztywny, brak płynności”).
+PRZYBLIZENIE = 1.07
+# Kadr przy przybliżeniu ucinamy bardziej od dołu niż od góry — oczy mają zostać w górnej tercji.
+KADR_GORA = 0.35
+PRZENIKANIE_DZWIEKU = 0.02   # 20 ms wygaszenia na stykach — kasuje trzask, a nie słychać go jako fade
 
 
 def timecode(sekundy: float, fps: int = FPS) -> str:
@@ -53,13 +60,23 @@ def zapisz_edl(odcinki: list[dict], nazwa: str, path: Path, fps: int) -> None:
     path.write_text("\n".join(linie), encoding="utf-8")
 
 
-def renderuj_odcinek(zrodlo: Path, o: dict, cel: Path, fps: int, draft: bool, mem: str) -> None:
+def renderuj_odcinek(zrodlo: Path, o: dict, cel: Path, fps: int, draft: bool, mem: str,
+                    przyblizenie: float = 1.0) -> None:
     """Jeden odcinek do osobnego pliku. `-ss` przed `-i` = szybkie przewijanie, a przy ponownym
     kodowaniu i tak dostajemy cięcie dokładne co do klatki."""
-    skala = f",scale=-2:{SZEROKOSC_DRAFT}" if draft else ""
+    dlugosc = o["koniec"] - o["start"]
+    filtry = [f"fps={fps}"]
+    if przyblizenie > 1.0:
+        # przybliżamy i wracamy do tego samego kadru — w montażu wszystkie odcinki mają jeden rozmiar
+        filtry.append(f"scale=ceil(iw*{przyblizenie}/2)*2:ceil(ih*{przyblizenie}/2)*2")
+        filtry.append(f"crop=iw/{przyblizenie}:ih/{przyblizenie}:(iw-ow)/2:(ih-oh)*{KADR_GORA}")
+    if draft:
+        filtry.append(f"scale=-2:{SZEROKOSC_DRAFT}")
+    wygaszenie = (f"afade=t=in:st=0:d={PRZENIKANIE_DZWIEKU},"
+                  f"afade=t=out:st={max(0.0, dlugosc - PRZENIKANIE_DZWIEKU):.3f}:d={PRZENIKANIE_DZWIEKU}")
     proc.run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
-              "-ss", f"{o['start']:.3f}", "-t", f"{o['koniec'] - o['start']:.3f}", "-i", str(zrodlo),
-              "-vf", f"fps={fps}{skala}", "-c:v", "libx264",
+              "-ss", f"{o['start']:.3f}", "-t", f"{dlugosc:.3f}", "-i", str(zrodlo),
+              "-vf", ",".join(filtry), "-af", wygaszenie, "-c:v", "libx264",
               "-preset", "veryfast" if draft else "medium", "-crf", "28" if draft else "18",
               "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "1",
               str(cel)], mem_max=mem, opis=f"render odcinka {o['id']}")
@@ -75,6 +92,8 @@ def main() -> None:
     ap.add_argument("--mem-max", default=proc.DOMYSLNY_LIMIT,
                     help="limit pamięci na krok FFmpeg (0 = bez limitu, np. na workerze)")
     ap.add_argument("--keep-parts", action="store_true", help="zostaw pojedyncze odcinki do podglądu")
+    ap.add_argument("--przyblizenie", type=float, default=PRZYBLIZENIE,
+                    help="naprzemienne przybliżenie na sklejkach (1.0 = wyłączone)")
     a = ap.parse_args()
 
     align_path = a.work / "align.json"
@@ -127,7 +146,9 @@ def main() -> None:
     pliki = []
     for i, o in enumerate(odcinki):
         cel = czesci / f"{i:03d}-{o['id']}.mp4"
-        renderuj_odcinek(zrodlo, o, cel, a.fps, a.draft, a.mem_max)
+        # co drugi odcinek bliżej — sąsiadujące ujęcia nigdy nie mają tego samego kadru
+        renderuj_odcinek(zrodlo, o, cel, a.fps, a.draft, a.mem_max,
+                         a.przyblizenie if i % 2 else 1.0)
         pliki.append(cel)
 
     lista = czesci / "lista.txt"

@@ -29,7 +29,11 @@ TOKEN = re.compile(r"[a-z0-9']+")
 
 PROG_DOPASOWANIA = 0.55     # poniżej tej zgodności uznajemy, że to nie jest to zdanie
 WAGA_PEWNOSCI = 0.05        # lekka premia za czystsze ujęcie (średnia pewność słów)
-MARGINES_S = 0.12           # oddech dosklejany do każdego ujęcia przy cięciu
+# Oddech dosklejany do ujęcia. Asymetrycznie: na końcu zdania zostawiamy więcej, bo tam pada wydech
+# i opadająca intonacja — ucięte zaraz po ostatniej głosce brzmi jak zatrzaśnięte drzwi.
+# Pierwsza wersja (0,12 s z obu stron) dawała montaż, który właściciel ocenił jako „sztywny” (2026-11-02).
+MARGINES_PRZED = 0.25
+MARGINES_PO = 0.40
 
 
 def tokenizuj(tekst: str) -> list[str]:
@@ -139,7 +143,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="C3 — dopasowanie nagrania do ID zdań scenariusza")
     ap.add_argument("--work", required=True, type=Path, help="katalog roboczy (z transcript.json)")
     ap.add_argument("--script", required=True, type=Path, help="content/scripts/<slug>.md")
-    ap.add_argument("--margines", type=float, default=MARGINES_S, help="oddech wokół ujęcia w sekundach")
+    ap.add_argument("--margines-przed", type=float, default=MARGINES_PRZED, help="oddech przed zdaniem (s)")
+    ap.add_argument("--margines-po", type=float, default=MARGINES_PO, help="oddech po zdaniu (s)")
     a = ap.parse_args()
 
     tr_path = a.work / "transcript.json"
@@ -158,13 +163,21 @@ def main() -> None:
     wszyscy = [kandydaci(z, slowa, tokeny) for z in zdania]
     wybor = wybierz_ujecia(zdania, wszyscy)
 
-    # odcinki do zachowania
+    # Odcinki do zachowania. Oddech bierzemy z ciszy wokół ujęcia, ale nigdy nie wchodzimy w sąsiednie
+    # ujęcie ani za jego połowę drogi — dzięki temu tam, gdzie nagrywałeś zdanie po zdaniu, w montażu
+    # zostaje prawdziwa pauza z pokoju, a nie cisza doklejona z innego miejsca taśmy.
+    uzyte = [(z, k) for z, k in zip(zdania, wybor) if k]
     zachowaj, pozycje = [], []
-    for z, kand in zip(zdania, wybor):
-        if not kand:
-            continue
-        zachowaj.append({"id": z["id"], "start": round(max(0.0, kand["start"] - a.margines), 3),
-                         "koniec": round(kand["koniec"] + a.margines, 3)})
+    for i, (z, kand) in enumerate(uzyte):
+        poprzedni_koniec = uzyte[i - 1][1]["koniec"] if i else 0.0
+        nastepny_start = uzyte[i + 1][1]["start"] if i + 1 < len(uzyte) else kand["koniec"] + a.margines_po
+        start = max(poprzedni_koniec + (kand["start"] - poprzedni_koniec) / 2 if i else 0.0,
+                    kand["start"] - a.margines_przed, 0.0)
+        koniec = min(kand["koniec"] + (nastepny_start - kand["koniec"]) / 2,
+                     kand["koniec"] + a.margines_po)
+        if koniec <= start:                       # ujęcia stykają się — tniemy dokładnie na słowie
+            start, koniec = kand["start"], kand["koniec"]
+        zachowaj.append({"id": z["id"], "start": round(start, 3), "koniec": round(koniec, 3)})
         pozycje.append((kand["od"], kand["do"]))
 
     # wszystko poza wybranymi ujęciami idzie do wycięcia; opisujemy, co tam było słychać
