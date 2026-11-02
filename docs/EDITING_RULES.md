@@ -19,8 +19,14 @@
 
 ## Montaż
 1. Z kilku ujęć tego samego zdania zostaje ostatnie czyste.
-2. Pauzy dłuższe niż ~0,6 s skracane (do potwierdzenia na pierwszym nagraniu).
+2. Pauzy dłuższe niż ~0,6 s skracane; **krótszych nie ruszamy** — oddech między zdaniami jest treścią,
+   nie pustym miejscem (uwaga „sztywny montaż”, `content/notes/_test-nagranie-cut1.md`).
 3. Grafika nie zasłania twarzy.
+4. **Żadne dwa sąsiadujące ujęcia twarzy nie mają tego samego kadru.** Naprzemienne przybliżenie ~7%
+   zamienia skok w cięcie zamierzone. To proteza — docelowo sklejkę zasłania materiał z ekranu.
+5. Cięcie dźwięku zawsze z krótkim wygaszeniem (~20 ms), nigdy w gołym przebiegu fali.
+6. Przy planowaniu kolumny „Na ekranie”: **sklejki planuj tam, gdzie i tak wchodzi grafika lub zrzut** —
+   wtedy nie widać ich wcale.
 
 ## Dźwięk
 1. Muzyka pod głosem cicho (poziom do ustalenia na pierwszym filmie); bez efektów „whoosh” przy każdym cięciu.
