@@ -130,26 +130,92 @@ def draw_motif(img: Image.Image, motif: str, verdict: str, accent, seed: int, cs
     img.paste(Image.new("RGB", (W, H), BG), (0, 0), shade.transpose(Image.FLIP_LEFT_RIGHT))
 
 
+FACE_ZOOM = False   # `--face-zoom`: kadr głowa + barki zamiast całego wycięcia
+
+
+def load_face(face_path: Path) -> Image.Image:
+    """Wycięcie twarzy; z FACE_ZOOM przycięte do głowy i barków (szerokość ~2,1 głowy, wysokość ~2,0 głowy,
+    środek na głowie) — przy zdjęciach z dużą ilością tułowia i ramion twarz w kadrze robi się dużo większa.
+    Ucięte boki sylwetki są wygaszane."""
+    face = Image.open(face_path)
+    if not FACE_ZOOM or face.mode not in ("RGBA", "LA"):
+        return face
+    face = face.convert("RGBA")
+    alpha = face.getchannel("A")
+    band = alpha.crop((0, int(face.height * 0.15), face.width, int(face.height * 0.3)))
+    cols = band.point(lambda v: 255 if v > 128 else 0).getbbox()
+    if not cols:
+        return face
+    head_w = cols[2] - cols[0]
+    cx = (cols[0] + cols[2]) // 2
+    half = int(head_w * 1.05)
+    face = face.crop((max(0, cx - half), 0, min(face.width, cx + half), min(face.height, int(head_w * 2.0))))
+    return fade_cut_edges(face)
+
+
+def fade_cut_edges(face: Image.Image, width: int = 90) -> Image.Image:
+    """Wygasza boki, w których sylwetka dotyka krawędzi zdjęcia (ucięte ramię) — bez twardego „cięcia”."""
+    alpha = face.getchannel("A")
+    fade = Image.new("L", face.size, 255)
+    ramp = Image.linear_gradient("L").rotate(90).resize((width, face.height))   # 255 przy krawędzi → 0
+    if alpha.crop((0, 0, 2, face.height)).getextrema()[1] > 0:
+        fade.paste(ramp.transpose(Image.FLIP_LEFT_RIGHT), (0, 0))
+    if alpha.crop((face.width - 2, 0, face.width, face.height)).getextrema()[1] > 0:
+        fade.paste(ramp, (face.width - width, 0))
+    face.putalpha(ImageChops.multiply(alpha, fade))
+    return face
+
+
+def fit_into(face: Image.Image, max_w: int, max_h: int) -> Image.Image:
+    """Jak thumbnail(), ale także powiększa (przycięte wycięcie bywa mniejsze niż kadr)."""
+    r = min(max_w / face.width, max_h / face.height)
+    return face.resize((max(1, int(face.width * r)), max(1, int(face.height * r))), Image.LANCZOS)
+
+
 def face_left_x(face_path: Path) -> int:
     """Lewa krawędź twarzy po umieszczeniu w kadrze (ta sama geometria co place_face)."""
-    face = Image.open(face_path)
+    face = load_face(face_path)
     box_w = int(W * 0.42)
     if face.mode in ("RGBA", "LA") or "transparency" in face.info:
-        face = face.copy()
-        face.thumbnail((box_w, H))
+        face = fit_into(face, box_w, H) if FACE_ZOOM else face.copy()
+        if not FACE_ZOOM:
+            face.thumbnail((box_w, H))
         return W - face.width + 20
     return W - box_w
 
 
-def place_face(img: Image.Image, face_path: Path, accent: tuple[int, int, int]) -> int:
+def grade_face(face: Image.Image, accent) -> Image.Image:
+    """Dopasowanie wyciętej twarzy do ciemnej sceny: lekko chłodniejsza i kontrastowa, z cienkim światłem
+    konturowym (rim light) w kolorze werdyktu po wewnętrznej stronie krawędzi — twarz przestaje wyglądać
+    na naklejoną na tło."""
+    alpha = face.split()[-1]
+    rgb = face.convert("RGB")
+    rgb = ImageEnhance.Contrast(rgb).enhance(1.08)
+    rgb = ImageEnhance.Color(rgb).enhance(1.06)
+    cool = Image.new("RGB", rgb.size, (60, 80, 120))
+    rgb = Image.blend(rgb, ImageChops.multiply(rgb, cool.point(lambda v: min(255, v + 150))), 0.18)
+    edge = ImageChops.subtract(alpha, alpha.filter(ImageFilter.MinFilter(15))).filter(ImageFilter.GaussianBlur(6))
+    rim = Image.new("RGB", rgb.size, accent)
+    rgb = Image.composite(ImageChops.screen(rgb, rim), rgb, edge.point(lambda v: int(v * 0.7)))
+    out = rgb.convert("RGBA")
+    out.putalpha(alpha)
+    return out
+
+
+def place_face(img: Image.Image, face_path: Path, accent: tuple[int, int, int], grade: bool = False) -> int:
     """Twarz po prawej: PNG z przezroczystością wklejany jako wycięcie, zwykłe zdjęcie przycinane do kadru.
 
     Zwraca współrzędną x lewej krawędzi twarzy — tekst nie może jej przekroczyć."""
-    face = Image.open(face_path)
+    face = load_face(face_path)
     box_w, box_h = int(W * 0.42), H
     if face.mode in ("RGBA", "LA") or "transparency" in face.info:
         face = face.convert("RGBA")
-        face.thumbnail((box_w, int(box_h * 1.0)))
+        if FACE_ZOOM:
+            face = fit_into(face, box_w, box_h)
+        else:
+            face.thumbnail((box_w, int(box_h * 1.0)))
+        if grade:
+            face = grade_face(face, accent)
         # Obrys w kolorze akcentu — rozpoznawalność szablonu.
         alpha = face.split()[-1]
         outline = Image.new("RGBA", face.size, accent + (0,))
@@ -180,11 +246,24 @@ def parse_lines(text: str) -> list[list[tuple[str, bool]]]:
     return lines
 
 
+def line_metrics(font: ImageFont.FreeTypeFont) -> tuple[int, int, int]:
+    """(przesunięcie góry wersalików od punktu rysowania, wysokość wersalików, odstęp linii) — z realnych
+    kształtów liter, nie z rozmiaru fontu, bo fonty różnią się proporcjami (Anton jest dużo wyższy od Nimbusa)."""
+    top, bottom = font.getbbox("HQ")[1::2]
+    cap = bottom - top
+    return top, cap, int(cap * 1.28)
+
+
+def block_height(font, n_lines: int) -> int:
+    _, cap, lh = line_metrics(font)
+    return (n_lines - 1) * lh + cap
+
+
 def fit_font(lines, max_w: int, max_h: int) -> ImageFont.FreeTypeFont:
     for size in range(190, 40, -4):
         font = ImageFont.truetype(FONT_BOLD, size)
         widths = [font.getlength(" ".join(w for w, _ in ln)) for ln in lines]
-        if max(widths) <= max_w and len(lines) * size * 1.02 <= max_h:
+        if max(widths) <= max_w and block_height(font, len(lines)) <= max_h:
             return font
     return ImageFont.truetype(FONT_BOLD, 40)
 
@@ -194,9 +273,9 @@ def draw_text(img: Image.Image, text: str, accent, right_edge: int | None) -> No
     lines = parse_lines(text)
     left = 56
     max_w = (right_edge - left - 30) if right_edge else int(W * 0.88)
-    font = fit_font(lines, max_w, int(H * 0.62))
-    lh = int(font.size * 1.02)
-    y = (H - lh * len(lines)) // 2 + 20
+    font = fit_font(lines, max_w, int(H * 0.5))
+    top, _, lh = line_metrics(font)
+    y = (H - block_height(font, len(lines))) // 2 + 20 - top
     space = font.getlength(" ")
     for ln in lines:
         x = left
@@ -289,10 +368,15 @@ def place_card(img: Image.Image, content: Image.Image, box, accent, angle: float
     return x0, y0, x1, y1
 
 
-def place_face_glow(img: Image.Image, face_path: Path, accent) -> int:
+def place_face_glow(img: Image.Image, face_path: Path, accent, grade: bool = False) -> int:
     """Większa twarz po prawej z miękką poświatą zamiast twardego obrysu; zwraca lewą krawędź."""
-    face = Image.open(face_path).convert("RGBA")
-    face.thumbnail((int(W * 0.46), int(H * 1.08)))
+    face = load_face(face_path).convert("RGBA")
+    if FACE_ZOOM:
+        face = fit_into(face, int(W * 0.46), int(H * 0.92))
+    else:
+        face.thumbnail((int(W * 0.46), int(H * 1.08)))
+    if grade:
+        face = grade_face(face, accent)
     x, y = W - face.width + 30, H - face.height
     # Zdjęcie ucięte ramką kadru (np. ramię przy lewej krawędzi) — wygaszamy krawędź, żeby nie było „cięcia”.
     alpha = face.split()[-1]
@@ -351,14 +435,15 @@ def render_rich(a, accent) -> Image.Image:
                                                                      a.equity_csv, a.label.upper())
     place_card(img, content, card_box, accent)
     if a.face:
-        place_face_glow(img, a.face, accent)
+        place_face_glow(img, a.face, accent, a.grade)
     draw_badge(img, (card_box[2] - 30, card_box[1] + 4), a.verdict, accent)
     # Tekst u góry po lewej, max 2 linie.
     d = ImageDraw.Draw(img)
     lines = parse_lines(a.text)
     left, max_w = 56, (face_x - 56 - 30) if a.face else int(W * 0.8)
-    font = fit_font(lines, max_w, 250)
-    lh, y = int(font.size * 1.0), 34
+    font = fit_font(lines, max_w, 205)
+    top, cap, lh = line_metrics(font)
+    y = 44 - top
     space, end_x = font.getlength(" "), left
     for ln in lines:
         x = left
@@ -369,13 +454,16 @@ def render_rich(a, accent) -> Image.Image:
         end_x = max(end_x, x)
         y += lh
     if a.arrow:
-        draw_arrow(img, (min(end_x, max_w) - 40, y + 4), (card_box[0] + cw // 2, card_box[1] - 14))
+        draw_arrow(img, (min(end_x, max_w) - 40, y - lh + top + cap + 14), (card_box[0] + cw // 2, card_box[1] - 14))
     return img
 
 
 def face_left_x_rich(face_path: Path) -> int:
-    face = Image.open(face_path).copy()
-    face.thumbnail((int(W * 0.46), int(H * 1.08)))
+    face = load_face(face_path).copy()
+    if FACE_ZOOM:
+        face = fit_into(face, int(W * 0.46), int(H * 0.92))
+    else:
+        face.thumbnail((int(W * 0.46), int(H * 1.08)))
     return W - face.width + 30
 
 
@@ -400,8 +488,15 @@ def main() -> int:
     ap.add_argument("--layout", choices=["simple", "rich"], default="simple")
     ap.add_argument("--screen", type=Path, help="rich: zrzut ekranu na karcie (bez = syntetyczny panel backtestu)")
     ap.add_argument("--arrow", action="store_true", help="rich: przerywana strzałka od tekstu do karty")
+    ap.add_argument("--face-zoom", action="store_true", help="kadr głowa + barki (większa twarz)")
+    ap.add_argument("--grade", action="store_true", help="dopasowanie twarzy do sceny + światło konturowe w kolorze werdyktu")
+    ap.add_argument("--font", type=Path, help="font nagłówka (domyślnie Nimbus Sans Narrow Bold), np. assets/fonts/Anton-Regular.ttf")
     ap.add_argument("--out", required=True, type=Path)
     a = ap.parse_args()
+    global FONT_BOLD, FACE_ZOOM
+    if a.font:
+        FONT_BOLD = str(a.font)
+    FACE_ZOOM = a.face_zoom
 
     words = len(re.findall(r"[^\s|*]+", a.text))
     if words > 5:
@@ -413,7 +508,7 @@ def main() -> int:
         img = base_background(a.bg)
         draw_motif(img, a.motif, a.verdict, accent, zlib.crc32(a.text.encode()), a.equity_csv,
                    face_left_x(a.face) if a.face else None)
-        face_x = place_face(img, a.face, accent) if a.face else None
+        face_x = place_face(img, a.face, accent, a.grade) if a.face else None
         draw_text(img, a.text, accent, right_edge=face_x)
         if a.label:
             draw_label(img, a.label.upper(), accent)
