@@ -85,12 +85,21 @@ def main() -> None:
     if not odcinki:
         sys.exit("błąd: align.json nie ma ani jednego odcinka do zachowania")
 
-    zrodlo = a.video
-    if not zrodlo:
-        ingest = a.work / "ingest.json"
-        if not ingest.is_file():
-            sys.exit("błąd: podaj --video albo uruchom najpierw ingest.py")
-        zrodlo = Path(json.loads(ingest.read_text(encoding="utf-8"))["zrodlo"])
+    # Znormalizowany obraz z C1 ma pierwszeństwo przed oryginałem: czasy cięć biorą się z dźwięku,
+    # a przy zmiennej liczbie klatek w nagraniu z kamery cięcie na oryginale rozjeżdża się z dźwiękiem.
+    ingest = a.work / "ingest.json"
+    info = json.loads(ingest.read_text(encoding="utf-8")) if ingest.is_file() else {}
+    znormalizowany = a.work / info.get("video_znormalizowane", "")
+    if info.get("video_znormalizowane") and znormalizowany.is_file():
+        zrodlo = znormalizowany
+        if a.video:
+            print(f"     obraz z {znormalizowany.name} (znormalizowany w C1), nie z {Path(a.video).name}")
+    elif a.video:
+        zrodlo = Path(a.video)
+    elif info.get("zrodlo"):
+        zrodlo = Path(info["zrodlo"])
+    else:
+        sys.exit("błąd: podaj --video albo uruchom najpierw ingest.py")
     if not zrodlo.is_file():
         sys.exit(f"błąd: nie ma pliku {zrodlo}")
 
