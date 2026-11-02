@@ -36,35 +36,41 @@ ZAPAS_TP = 1.0
 TOLERANCJA_LU = 0.3   # bliżej celu niż to i tak nikt nie usłyszy
 
 MOWA = "highpass=f=80,afftdn=nf=-25,acompressor=threshold=-18dB:ratio=3:attack=5:release=120:makeup=2"
+# Kompresor ma stały próg, więc materiał musi do niego wejść na sensownym poziomie. Nagranie telefonem
+# z odległości potrafi mieć −27 LUFS (test 2026-11-02) — wtedy sygnał w ogóle nie przekracza progu,
+# kompresja nie działa, odstęp szczytu od średniej zostaje duży i limiter zjada całe podbicie.
+POZIOM_ROBOCZY = -16.0
 
 
 def ffmpeg(args: list[str], mem: str, opis: str = "ffmpeg"):
     return proc.run(["ffmpeg", "-nostdin", "-hide_banner", *args], mem_max=mem, opis=opis)
 
 
-def lancuch(music: Path | None, koncowka: str) -> str:
+def lancuch(music: Path | None, koncowka: str, wstepne: float = 0.0) -> str:
     """Graf filtrów: sama mowa albo mowa + podkład ściszany pod głosem; `koncowka` to pomiar albo poziom."""
+    mowa = f"volume={wstepne:.2f}dB,{MOWA}" if wstepne else MOWA
     if not music:
-        return f"[0:a]{MOWA},{koncowka}[out]"
-    return (f"[0:a]{MOWA}[sp];"
+        return f"[0:a]{mowa},{koncowka}[out]"
+    return (f"[0:a]{mowa}[sp];"
             f"[1:a]volume=0.18[mus];"
             # kluczem jest mowa: gdy mówisz, muzyka schodzi; gdy milkniesz, wraca
             f"[mus][sp]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=400[duck];"
             f"[sp][duck]amix=inputs=2:normalize=0,{koncowka}[out]")
 
 
-def poziom(zmierzone_i: float, korekta: float = 0.0) -> str:
-    """Podbicie do celu + limiter szczytów. `korekta` dociąga wynik, gdy limiter zabrał za dużo."""
-    limit = 10 ** ((CEL_TP - ZAPAS_TP) / 20)
+def poziom(zmierzone_i: float, korekta: float = 0.0, zapas: float = ZAPAS_TP) -> str:
+    """Podbicie do celu + limiter szczytów. `korekta` dociąga poziom, `zapas` odsuwa limiter od celu."""
+    limit = 10 ** ((CEL_TP - zapas) / 20)
     return (f"volume={CEL_LUFS - zmierzone_i + korekta:.2f}dB,"
             f"alimiter=limit={limit:.4f}:attack=5:release=50:level=false")
 
 
-def zmierz(src: Path, music: Path | None, mem: str) -> dict:
-    """Pierwszy przebieg: ile ten materiał ma głośności PO filtrach, przed normalizacją."""
+def zmierz(src: Path, music: Path | None, mem: str, wstepne: float = 0.0, surowo: bool = False) -> dict:
+    """Pomiar głośności: `surowo` = sam plik, bez filtrów (żeby ustawić wejście kompresora)."""
     analiza = f"loudnorm=I={CEL_LUFS}:TP={CEL_TP}:LRA={CEL_LRA}:print_format=json"
-    args = ["-i", str(src)] + (["-i", str(music)] if music else [])
-    res = ffmpeg([*args, "-filter_complex", lancuch(music, analiza), "-map", "[out]", "-f", "null", "-"],
+    graf = f"[0:a]{analiza}[out]" if surowo else lancuch(music, analiza, wstepne)
+    args = ["-i", str(src)] + (["-i", str(music)] if music and not surowo else [])
+    res = ffmpeg([*args, "-filter_complex", graf, "-map", "[out]", "-f", "null", "-"],
                  mem, "pomiar głośności")
     start = res.stderr.rfind("{")
     if start == -1:
@@ -88,23 +94,36 @@ def main() -> None:
     if a.music and not a.music.is_file():
         sys.exit(f"błąd: nie ma podkładu {a.music}")
 
-    pomiar = zmierz(Path(src), a.music, a.mem_max)
+    surowe = zmierz(Path(src), None, a.mem_max, surowo=True)
+    wstepne = POZIOM_ROBOCZY - float(surowe["input_i"])
+    print(f"     wejście {surowe['input_i']} LUFS → podbicie {wstepne:+.1f} dB przed kompresorem")
+    pomiar = zmierz(Path(src), a.music, a.mem_max, wstepne)
     wyjscie = a.work / a.out
     args = ["-y", "-i", str(src)] + (["-i", str(a.music)] if a.music else [])
 
     # Limiter zdejmuje część podbicia, a ile — zależy od materiału. Zamiast zgadywać: zmierz wynik
     # i jeśli odstaje od celu, policz jeszcze raz z poprawką. Jeden nawrót wystarcza w praktyce.
-    korekta = 0.0
-    for podejscie in range(2):
-        ffmpeg([*args, "-filter_complex", lancuch(a.music, poziom(float(pomiar["input_i"]), korekta)),
+    korekta, zapas = 0.0, ZAPAS_TP
+    for podejscie in range(4):
+        ffmpeg([*args, "-filter_complex",
+                lancuch(a.music, poziom(float(pomiar["input_i"]), korekta, zapas), wstepne),
                 "-map", "0:v?", "-map", "[out]", "-c:v", "copy",
                 "-c:a", "aac", "-b:a", "192k", "-ar", "48000", str(wyjscie)], a.mem_max, "mastering")
-        kontrola = zmierz(wyjscie, None, a.mem_max)
+        kontrola = zmierz(wyjscie, None, a.mem_max, surowo=True)
         roznica = CEL_LUFS - float(kontrola["input_i"])
-        if abs(roznica) <= TOLERANCJA_LU or podejscie:
+        nadmiar = float(kontrola["input_tp"]) - CEL_TP
+        if podejscie == 3:
+            break
+        # Szczyt ma pierwszeństwo: limiter pilnuje próbek, ale koder AAC dokłada swoje przestrzelenia
+        # (test 2026-11-02: limiter na −2,5 dB, a w gotowym pliku −1,17 dBTP), więc odsuwamy go dalej.
+        if nadmiar > 0:
+            zapas += nadmiar + 0.2
+            print(f"     szczyt {kontrola['input_tp']} dBTP ponad limitem — limiter niżej o {nadmiar + 0.2:.2f} dB")
+            continue
+        if abs(roznica) <= TOLERANCJA_LU:
             break
         korekta += roznica
-        print(f"     poprawka poziomu {roznica:+.2f} LU — drugie podejście")
+        print(f"     poprawka poziomu {roznica:+.2f} LU — kolejne podejście")
     # szczyt ponad limitem to błąd (YouTube dołoży swoje), poziom poniżej celu to tylko cichszy film
     szczyt_ok = float(kontrola["input_tp"]) <= CEL_TP
     uwagi = [] if szczyt_ok else [f"szczyt {kontrola['input_tp']} dBTP ponad limitem {CEL_TP}"]
@@ -113,12 +132,13 @@ def main() -> None:
                      f"szczytu od średniej, mocniejsze dociskanie słychać jako zniekształcenie")
 
     raport = {"wejscie": str(src), "podklad": str(a.music) if a.music else None,
-              "przed": {"I": pomiar["input_i"], "TP": pomiar["input_tp"], "LRA": pomiar["input_lra"]},
+              "przed": {"I": surowe["input_i"], "TP": surowe["input_tp"], "LRA": surowe["input_lra"]},
+              "podbicie_przed_kompresorem_db": round(wstepne, 2),
               "po": {"I": kontrola["input_i"], "TP": kontrola["input_tp"], "LRA": kontrola["input_lra"]},
               "cel": {"I": CEL_LUFS, "TP": CEL_TP, "LRA": CEL_LRA}, "uwagi": uwagi}
     (a.work / "audio-raport.json").write_text(json.dumps(raport, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"{'OK' if szczyt_ok else 'UWAGA'}: {pomiar['input_i']} → {kontrola['input_i']} LUFS "
+    print(f"{'OK' if szczyt_ok else 'UWAGA'}: {surowe['input_i']} → {kontrola['input_i']} LUFS "
           f"(cel {CEL_LUFS}), szczyt {kontrola['input_tp']} dBTP")
     for u in uwagi:
         print(f"     uwaga: {u}")

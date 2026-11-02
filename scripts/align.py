@@ -67,9 +67,19 @@ def kandydaci(zdanie: dict, slowa: list[dict], tokeny: list[str]) -> list[dict]:
             okno = tokeny[i:i + dl]
             if not okno:
                 continue
+            sm = SequenceMatcher(None, cel, okno, autojunk=False)
+            # Okno jest zgrubne (ułamki długości zdania), więc na końcach bywają słowa z sąsiedniego
+            # zdania. Przycinamy do pierwszego i ostatniego słowa, które naprawdę pasuje — inaczej
+            # ujęcie „zachodzi” na następne i programowanie dynamiczne musi jedno z nich odrzucić
+            # (test 2026-11-02: tak wypadły L002 i L006, mimo że oba były w nagraniu).
+            bloki = [b for b in sm.get_matching_blocks() if b.size]
+            if not bloki:
+                continue
+            od_w, do_w = bloki[0].b, bloki[-1].b + bloki[-1].size - 1
+            okno = okno[od_w:do_w + 1]
             wynik = SequenceMatcher(None, cel, okno, autojunk=False).ratio()
             if najlepszy is None or wynik > najlepszy["wynik"]:
-                najlepszy = {"wynik": wynik, "od": i, "do": i + len(okno) - 1}
+                najlepszy = {"wynik": wynik, "od": i + od_w, "do": i + do_w}
         if najlepszy and najlepszy["wynik"] >= PROG_DOPASOWANIA:
             znalezione.append(najlepszy)
 
@@ -200,14 +210,23 @@ def main() -> None:
             linie.append(f"| {z['id']} | {z['rozdzial']} | {z['ujec_znalezionych']} | "
                          f"{z['wybrane_ujecie']} | {z['zgodnosc']:.2f} | {z['start']:.1f} s | {z['en'][:60]} |")
         else:
-            linie.append(f"| {z['id']} | {z['rozdzial']} | 0 | **BRAK** | — | — | {z['en'][:60]} |")
+            # rozróżniamy „nie ma czego montować” od „ujęcie jest, ale kłóci się z sąsiednim”
+            powod = "**BRAK**" if not z["ujec_znalezionych"] else "**KONFLIKT**"
+            linie.append(f"| {z['id']} | {z['rozdzial']} | {z['ujec_znalezionych']} | "
+                         f"{powod} | — | — | {z['en'][:60]} |")
     linie += ["", "## Co zostało wycięte", ""]
     linie += [f"- `{w['start']:.1f}–{w['koniec']:.1f} s` ({w['powod']}): „{w['tekst'][:120]}”"
               for w in wyciete] or ["- nic"]
-    braki = [z for z in wynik["zdania"] if not z["wybrane_ujecie"]]
+    braki = [z for z in wynik["zdania"] if not z["wybrane_ujecie"] and not z["ujec_znalezionych"]]
     if braki:
         linie += ["", "## Zdania bez ujęcia (do dogrania)", ""]
         linie += [f"- **{z['id']}** ({z['rozdzial']}): {z['en']}" for z in braki]
+    konflikty = [z for z in wynik["zdania"] if not z["wybrane_ujecie"] and z["ujec_znalezionych"]]
+    if konflikty:
+        linie += ["", "## Zdania z ujęciem, którego nie dało się użyć", "",
+                  "Ujęcie jest w nagraniu, ale nachodzi na ujęcie sąsiedniego zdania — "
+                  "zwykle znaczy to, że dwa zdania padły bez pauzy między nimi.", ""]
+        linie += [f"- **{z['id']}** ({z['rozdzial']}): {z['en']}" for z in konflikty]
     (a.work / "align-raport.md").write_text("\n".join(linie) + "\n", encoding="utf-8")
 
     print(f"OK: {dopasowane}/{len(zdania)} zdań, {wynik['czas_zachowany_s']:.1f} s do zachowania, "
