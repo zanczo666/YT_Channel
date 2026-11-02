@@ -8,7 +8,7 @@ wstaje na czas zadania i znika.
 Polecenia:
     worker.py up                      postaw maszynę (łańcuch fallbacku G3a) i poczekaj na SSH
     worker.py job --work <kat> --script <plik> --video <plik>
-                                      pełny cykl: postaw → wyślij → C1–C5 → zabierz wynik → skasuj
+                                      pełny cykl: postaw → wyślij → C1–C9 → zabierz wynik → skasuj
     worker.py down                    skasuj maszynę
     worker.py reap [--older-than 1]   watchdog G7: kasuje workery starsze niż N godzin
 
@@ -213,6 +213,8 @@ def job(a: argparse.Namespace) -> None:
             ("C3 dopasowanie", f"python3 /root/scripts/align.py --work /root/praca/work --script {scen}"),
             ("C4 montaż",     f"python3 /root/scripts/cut.py --work /root/praca/work --video {video} --mem-max 0"),
             ("C5 dźwięk",     f"python3 /root/scripts/audio_master.py --work /root/praca/work --mem-max 0"),
+            ("C8 napisy",     f"python3 /root/scripts/subtitles.py --work /root/praca/work --script {scen}"),
+            ("C9 rozdziały",  f"python3 /root/scripts/chapters.py --work /root/praca/work --script {scen}"),
         ]
         for nazwa, polecenie in kroki:
             print(f"\n── {nazwa} ──")
