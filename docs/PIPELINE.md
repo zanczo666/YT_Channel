@@ -60,9 +60,10 @@ idempotentny, logowany, z powiadomieniem przy błędzie.
 ### C. Postprodukcja (worker on-demand — patrz G3)
 | # | Element | Status | Opis |
 |---|---|---|---|
-| C1 | Ingest | ⬜ | ffprobe, kopia, normalizacja do 1080p/30 CFR, wyciągnięcie audio |
-| C2 | Transkrypcja słowo po słowie | ⬜ | faster-whisper (CPU, int8) na workerze; wagi modelu w snapshocie, nie pobierane przy każdym starcie |
-| C3 | Dopasowanie do scenariusza | ⬜ | słowa ↔ ID zdań (fuzzy), **ostatnie czyste ujęcie** każdego zdania, wycięcie pauz/powtórek; raport „co wycięto” |
+| C1 | Ingest | ✅ | `scripts/ingest.py` — ffprobe, `audio.wav` 16 kHz mono, pomiar EBU R128, `--normalize` do 1080p/30 CFR (kosztowne, domyślnie wyłączone — lokalnie niepotrzebne, robi to worker) |
+| C2 | Transkrypcja słowo po słowie | ✅ | `scripts/transcribe.py` — faster-whisper (CPU, int8), venv `~/.venvs/whisper`; wagi modelu w snapshocie workera. Lokalnie `tiny`/`base`, produkcyjnie `large-v3` |
+| C2a | Dwie pułapki rozwiązane w kodzie | ✅ | **(1)** Whisper na całym pliku potrafi milcząco pominąć początek — test 2026-11-02: z 36 s zjadał pierwsze 7,7 s (czyli hook), a ten sam fragment osobno transkrybował poprawnie. Dlatego nagranie idzie do modelu **kawałkami ciętymi po ciszy (VAD)**, z przesunięciem czasów; przy okazji granice ciszy pokrywają się z granicami ujęć. **(2)** Własne wczytywanie WAV zamiast ścieżki — dekoder faster-whisper idzie przez PyAV, a `av` 19 wywraca się na zmienionym API |
+| C3 | Dopasowanie do scenariusza | ✅ | `scripts/align.py` — kandydaci na ujęcia (fuzzy, kotwice na pierwszym słowie), wybór jednego ujęcia na zdanie przez programowanie dynamiczne z zachowaniem kolejności, przy remisie **ujęcie późniejsze**; `align.json` + `align-raport.md` („co wycięto”, „zdania bez ujęcia do dogrania”) |
 | C4 | Lista cięć + oś czasu | ⬜ | EDL/FCPXML dla DaVinci (ręczna poprawka opcjonalna) + render automatyczny FFmpeg |
 | C5 | Dźwięk | ⬜ | filtr górnoprzepustowy, odszumianie, kompresja, **loudnorm −14 LUFS**, muzyka pod głosem z duckingiem |
 | C6 | Obraz | ⬜ | korekcja/LUT, subtelne przybliżenia na akcentach (z beat mapy), bez efekciarstwa |
@@ -121,7 +122,7 @@ idempotentny, logowany, z powiadomieniem przy błędzie.
 | Etap | Zakres | Efekt |
 |---|---|---|
 | **0. Fundament** | F1–F7, D4 (wniosek o audyt), B2, B3 | kanał gotowy wizualnie i prawnie; nagrania same trafiają na serwer |
-| **1. MVP „nagranie → prywatny film”** | C1–C5, C8–C12, D3, G1, G3, G7, G8 | z jednego nagrania: zmontowany film 1080p z napisami EN/PL, rozdziałami, pakietem i wgraniem prywatnym |
+| **1. MVP „nagranie → prywatny film”** | C1–C5, C8–C12, D3, G1, G3, G7, G8 — **C1–C3 gotowe (2026-11-02)**, dalej C4 (lista cięć) i C5 (dźwięk) | z jednego nagrania: zmontowany film 1080p z napisami EN/PL, rozdziałami, pakietem i wgraniem prywatnym |
 | **2. Grafiki i shorts** | C6, C7, C13, A1 (dane) | ekrany i wykresy z danych fabryki, shorts automatycznie |
 | **3. Orkiestracja** | A2, A3, G2, G6, B4 | kalendarz, bufor, akceptacje z telefonu, praca seriami |
 | **4. Pętla wzrostu** | E1–E3, A5 | analityka → reguły, komentarze, newsletter, biblioteka haków |
