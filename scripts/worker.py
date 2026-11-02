@@ -194,7 +194,8 @@ def job(a: argparse.Namespace) -> None:
     udalo_sie = False
     try:
         czekaj_na_gotowosc(host)
-        ssh(host, "mkdir -p /root/praca /root/scripts")
+        # work/ zakłada dopiero C1, ale `tee` loguje od pierwszego kroku — katalog musi już być
+        ssh(host, "mkdir -p /root/praca/work /root/scripts")
         subprocess.run(["rsync", "-az", "-e", f"ssh -i {KLUCZ} -o StrictHostKeyChecking=no "
                                               f"-o UserKnownHostsFile=/dev/null -o LogLevel=ERROR",
                         f"{repo}/", f"root@{host}:/root/scripts/"], check=True)
