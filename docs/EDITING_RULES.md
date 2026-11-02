@@ -14,7 +14,9 @@
    powiedziane bez oddechu zlewają się w jedno ujęcie i dopasowanie musi wybrać jedno z nich.
 2. **Po pomyłce powtarzaj całe zdanie od początku**, nie od słowa, na którym się potknąłeś — inaczej
    w nagraniu nie ma ani jednego pełnego ujęcia tego zdania.
-3. **Mów bliżej mikrofonu.** Nagranie z odległości wyszło na −30 LUFS; dźwięk da się podnieść, ale razem
+3. **Nagrywaj poziomo.** Pierwsze nagranie próbne przyszło pionowe (1080×1920) i cały montaż policzył się
+   dla wąskiego kadru. Pionowy kadr zostaw na shorts (C13). C1 od tej pory głośno o tym ostrzega.
+4. **Mów bliżej mikrofonu.** Nagranie z odległości wyszło na −30 LUFS; dźwięk da się podnieść, ale razem
    z poziomem rośnie szum pomieszczenia, a kompresja musi pracować mocniej.
 
 ## Montaż
