@@ -199,7 +199,7 @@ def job(a: argparse.Namespace) -> None:
         subprocess.run(["rsync", "-az", "-e", f"ssh -i {KLUCZ} -o StrictHostKeyChecking=no "
                                               f"-o UserKnownHostsFile=/dev/null -o LogLevel=ERROR",
                         f"{repo}/", f"root@{host}:/root/scripts/"], check=True)
-        for plik in (a.video, a.script):
+        for plik in [x for x in (a.video, a.script, a.dane) if x]:
             subprocess.run(["rsync", "-az", "--progress", "-e", f"ssh -i {KLUCZ} "
                             f"-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR",
                             str(plik), f"root@{host}:/root/praca/"], check=True)
@@ -213,6 +213,9 @@ def job(a: argparse.Namespace) -> None:
             ("C3 dopasowanie", f"python3 /root/scripts/align.py --work /root/praca/work --script {scen}"),
             ("C4 montaż",     f"python3 /root/scripts/cut.py --work /root/praca/work --video {video} --mem-max 0"),
             ("C5 dźwięk",     f"python3 /root/scripts/audio_master.py --work /root/praca/work --mem-max 0"),
+            *([("C7 grafiki", f"python3 /root/scripts/graphics.py --work /root/praca/work "
+                              f"--script {scen} --dane /root/praca/{Path(a.dane).name} --mem-max 0")]
+              if a.dane else []),
             ("C8 napisy",     f"python3 /root/scripts/subtitles.py --work /root/praca/work --script {scen}"),
             ("C9 rozdziały",  f"python3 /root/scripts/chapters.py --work /root/praca/work --script {scen}"),
         ]
@@ -247,6 +250,7 @@ def main() -> None:
     p_job.add_argument("--work", required=True, type=Path, help="katalog na wynik (lokalnie)")
     p_job.add_argument("--video", required=True, type=Path)
     p_job.add_argument("--script", required=True, type=Path)
+    p_job.add_argument("--dane", type=Path, help="JSON z danymi do grafik (C7); bez niego krok pomijamy")
     p_job.add_argument("--model", default="large-v3")
     p_job.add_argument("--keep-on-error", action="store_true", default=True)
     a = ap.parse_args()

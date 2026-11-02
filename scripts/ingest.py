@@ -67,11 +67,26 @@ def describe(meta: dict) -> dict:
         "czas_s": round(float(meta["format"]["duration"]), 3),
         "rozmiar_mb": round(int(meta["format"]["size"]) / 1024 / 1024, 1),
         "kontener": meta["format"].get("format_name"),
-        "obraz": {"kodek": video["codec_name"], "szerokosc": video["width"],
-                  "wysokosc": video["height"], "fps": fps} if video else None,
+        "obraz": opis_obrazu(video, fps) if video else None,
         "dzwiek": {"kodek": audio["codec_name"], "kanaly": audio["channels"],
                    "hz": int(audio["sample_rate"])} if audio else None,
     }
+
+
+def opis_obrazu(video: dict, fps: float | None) -> dict:
+    """Wymiary **po obrocie**. Telefon zapisuje kadr poziomo i dokłada metadane obrotu, więc samo
+    `width`/`height` ze strumienia kłamie: film nagrany pionowo raportuje się jako 1920×1080."""
+    obrot = 0
+    for sd in video.get("side_data_list", []):
+        if "rotation" in sd:
+            obrot = int(abs(float(sd["rotation"]))) % 180
+    if not obrot and video.get("tags", {}).get("rotate"):
+        obrot = int(abs(float(video["tags"]["rotate"]))) % 180
+    szer, wys = video["width"], video["height"]
+    if obrot == 90:
+        szer, wys = wys, szer
+    return {"kodek": video["codec_name"], "szerokosc": szer, "wysokosc": wys,
+            "fps": fps, "obrot": obrot, "pionowe": wys > szer}
 
 
 def extract_audio(src: Path, dst: Path) -> None:
@@ -117,6 +132,10 @@ def main() -> None:
     obraz = info["obraz"]
     print(f"OK: {info['czas_s']:.1f} s, {info['rozmiar_mb']} MB"
           + (f", {obraz['szerokosc']}×{obraz['wysokosc']} @ {obraz['fps']} fps" if obraz else ", bez obrazu"))
+    if obraz and obraz["pionowe"]:
+        print("     UWAGA: nagranie jest PIONOWE. Kanał publikuje 16:9 — cały dalszy montaż, grafiki "
+              "i napisy policzą się dla wąskiego kadru.\n"
+              "     Obróć telefon przy nagrywaniu; pionowy kadr zostaw na shorts (C13).")
     print(f"     {audio} + {a.work / 'ingest.json'}")
 
 
