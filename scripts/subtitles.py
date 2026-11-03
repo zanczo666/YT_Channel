@@ -24,7 +24,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from align import czytaj_scenariusz, tokenizuj  # noqa: E402 — ten sam parser scenariusza
+from align import MARGINES_PO, MARGINES_PRZED, czytaj_scenariusz, tokenizuj  # noqa: E402 — ten sam parser scenariusza
 
 ZNAKI_W_LINII = 42      # norma czytelności: dwie linie po ~42 znaki mieszczą się w kadrze
 LINIE = 2
@@ -33,6 +33,9 @@ MAX_CZAS = 7.0
 PRZERWA = 0.08          # szczelina między napisami, żeby zmiana była widoczna
 
 WIERSZ_PL = re.compile(r"^\|\s*(L\d{3,})\s*\|[^|]*\|([^|]*)\|", re.MULTILINE)
+
+
+POKRYCIE_SLOW = 0.7   # poniżej tej części zdania czasy słów z transkrypcji nie są wiarygodne
 
 
 def czas_srt(s: float) -> str:
@@ -158,8 +161,13 @@ def main() -> None:
             continue
         czasy = czasy_slow(tokenizuj(zdanie["en"]), w_odcinku)
         # tokenizuj() gubi interpunkcję, więc może dać mniej elementów niż jest słów do wyświetlenia
-        if len(czasy) != len(slowa_en):
+        # Po przycięciu schowanej pomyłki (C3) część słów ma czasy sprzed początku odcinka i wypada z listy.
+        # Pozostałe nie opisują całego zdania, więc czas rozkładamy równo na mowę w odcinku.
+        niepelne = len(w_odcinku) < POKRYCIE_SLOW * len(slowa_en)
+        if niepelne or len(czasy) != len(slowa_en):
             od, do = w_odcinku[0]["start"], w_odcinku[-1]["koniec"]
+            if niepelne:
+                od, do = odcinek["zrodlo_start"] + MARGINES_PRZED, odcinek["zrodlo_koniec"] - MARGINES_PO
             krok = (do - od) / max(1, len(slowa_en))
             czasy = [(od + i * krok, od + (i + 1) * krok) for i in range(len(slowa_en))]
 

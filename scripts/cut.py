@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -82,6 +83,27 @@ def renderuj_odcinek(zrodlo: Path, o: dict, cel: Path, fps: int, draft: bool, me
               str(cel)], mem_max=mem, opis=f"render odcinka {o['id']}")
 
 
+def dlugosc_pliku(plik: Path) -> float:
+    res = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(plik)],
+                         capture_output=True, text=True)
+    if res.returncode != 0:
+        sys.exit(f"błąd: ffprobe nie odczytał {plik}\n{res.stderr.strip()[-400:]}")
+    return float(res.stdout)
+
+
+def zapisz_os_czasu(odcinki: list[dict], dlugosci: list[float], zrodlo: Path, fps: int, path: Path) -> float:
+    """Gdzie każde zdanie ląduje w zmontowanym materiale (potrzebne do napisów, rozdziałów i grafik)."""
+    os_czasu, pozycja = [], 0.0
+    for o, dlugosc in zip(odcinki, dlugosci):
+        os_czasu.append({"id": o["id"], "zrodlo_start": o["start"], "zrodlo_koniec": o["koniec"],
+                         "montaz_start": round(pozycja, 3), "montaz_koniec": round(pozycja + dlugosc, 3)})
+        pozycja += dlugosc
+    cut = {"zrodlo": str(zrodlo.resolve()), "fps": fps, "odcinkow": len(odcinki),
+           "dlugosc_s": round(pozycja, 3), "os_czasu": os_czasu}
+    path.write_text(json.dumps(cut, ensure_ascii=False, indent=2), encoding="utf-8")
+    return pozycja
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="C4 — lista cięć i montaż zgrubny")
     ap.add_argument("--work", required=True, type=Path, help="katalog roboczy (z align.json)")
@@ -122,17 +144,8 @@ def main() -> None:
     if not zrodlo.is_file():
         sys.exit(f"błąd: nie ma pliku {zrodlo}")
 
-    # oś czasu: gdzie każde zdanie ląduje w zmontowanym materiale (potrzebne do napisów i rozdziałów)
-    os_czasu, pozycja = [], 0.0
-    for o in odcinki:
-        dlugosc = round(o["koniec"] - o["start"], 3)
-        os_czasu.append({"id": o["id"], "zrodlo_start": o["start"], "zrodlo_koniec": o["koniec"],
-                         "montaz_start": round(pozycja, 3), "montaz_koniec": round(pozycja + dlugosc, 3)})
-        pozycja += dlugosc
-
-    cut = {"zrodlo": str(zrodlo.resolve()), "fps": a.fps, "odcinkow": len(odcinki),
-           "dlugosc_s": round(pozycja, 3), "os_czasu": os_czasu}
-    (a.work / "cut.json").write_text(json.dumps(cut, ensure_ascii=False, indent=2), encoding="utf-8")
+    planowane = [round(o["koniec"] - o["start"], 3) for o in odcinki]
+    pozycja = zapisz_os_czasu(odcinki, planowane, zrodlo, a.fps, a.work / "cut.json")
     zapisz_edl(odcinki, a.work.name, a.work / "cut.edl", a.fps)
 
     if a.no_render:
@@ -150,6 +163,11 @@ def main() -> None:
         renderuj_odcinek(zrodlo, o, cel, a.fps, a.draft, a.mem_max,
                          a.przyblizenie if i % 2 else 1.0)
         pliki.append(cel)
+
+    # Wyrenderowany odcinek jest nieco dłuższy od planu (pełne klatki, ramki AAC), a różnice się sumują:
+    # 0,45 s na 12 odcinkach (2026-11-03), czyli napisy uciekałyby od mowy z każdą minutą filmu.
+    # Dlatego ostateczna oś czasu powstaje z długości plików, które naprawdę sklejamy.
+    pozycja = zapisz_os_czasu(odcinki, [dlugosc_pliku(p) for p in pliki], zrodlo, a.fps, a.work / "cut.json")
 
     lista = czesci / "lista.txt"
     lista.write_text("".join(f"file '{p.resolve()}'\n" for p in pliki), encoding="utf-8")

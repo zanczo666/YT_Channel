@@ -7,7 +7,8 @@ Ten skrypt odnajduje te zdania w transkrypcji nagrania i decyduje, który fragme
 1. dla każdego zdania szuka wszystkich ujęć w nagraniu (zdanie powtórzone = kilku kandydatów),
 2. wybiera **jeden** ujęcie na zdanie tak, żeby kolejność zdań była zachowana (programowanie dynamiczne),
    a przy równej jakości wygrywa **ujęcie późniejsze** — czyli to, po którym już nie poprawiałeś,
-3. wszystko poza wybranymi ujęciami (pauzy, pomyłki, odrzucone ujęcia) trafia na listę do wycięcia.
+3. wszystko poza wybranymi ujęciami (pauzy, pomyłki, odrzucone ujęcia) trafia na listę do wycięcia,
+4. ujęcie, w którym Whisper schował urwany początek, przycina do ostatniego fragmentu mowy (patrz niżej).
 
 Wynik: `align.json` (odcinki do zachowania i do wycięcia) + `align-raport.md` (czytelny raport „co wycięto”).
 
@@ -19,6 +20,8 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import statistics
+import subprocess
 import sys
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -34,6 +37,14 @@ WAGA_PEWNOSCI = 0.05        # lekka premia za czystsze ujęcie (średnia pewnoś
 # Pierwsza wersja (0,12 s z obu stron) dawała montaż, który właściciel ocenił jako „sztywny” (2026-11-02).
 MARGINES_PRZED = 0.25
 MARGINES_PO = 0.40
+# Whisper potrafi pominąć urwany początek i „sorry”, a brakujący czas rozciągnąć na słowa poprawnego zdania
+# (2026-11-03: L005, „until” trwało 4,2 s). Tekst wygląda wtedy czysto, więc pomyłkę widać dopiero
+# w czasach słów i w dźwięku. Samo długie słowo to za mało: tak samo wygląda pauza w środku czytanego zdania.
+DLUGIE_SLOWO = 1.0          # słowo od tej długości (s) każe zajrzeć do dźwięku
+MIN_PRZERWA = 0.7           # krótsza cisza to oddech w zdaniu, nie granica ujęcia
+CISZA_DB = -45
+ZDANIE_W_BLOKU = 0.75       # ostatni fragment musi mieścić tyle całego zdania przy tempie mówcy…
+SLOWA_W_BLOKU = 0.6         # …a słowa z transkrypcji mają zajmować mniej niż tyle jego czasu
 
 
 def tokenizuj(tekst: str) -> list[str]:
@@ -102,6 +113,34 @@ def kandydaci(zdanie: dict, slowa: list[dict], tokeny: list[str]) -> list[dict]:
     return wybrane
 
 
+def cisze_w_ujeciu(audio: Path, start: float, koniec: float) -> list[tuple[float, float]]:
+    """Cisze w odcinku nagrania, w czasie całego pliku."""
+    res = subprocess.run(["ffmpeg", "-nostdin", "-hide_banner", "-ss", f"{start:.3f}", "-t", f"{koniec - start:.3f}",
+                          "-i", str(audio), "-af", f"silencedetect=noise={CISZA_DB}dB:d={MIN_PRZERWA}",
+                          "-f", "null", "-"], capture_output=True, text=True)
+    pocz = [float(x) + start for x in re.findall(r"silence_start: ([\d.]+)", res.stderr)]
+    konc = [float(x) + start for x in re.findall(r"silence_end: ([\d.]+)", res.stderr)]
+    return list(zip(pocz, konc))
+
+
+def start_ostatniego_ujecia(kand: dict, slowa: list[dict], ile_tokenow: int, tempo: float,
+                            audio: Path) -> float | None:
+    """Nowy początek, jeśli w ujęciu schowało się urwane podejście; inaczej None.
+
+    Przerwa z czytania ma po sobie tyle słów, ile mieści się w tym czasie. Po schowanej pomyłce ostatni
+    fragment mowy jest długi jak całe zdanie, ale według transkrypcji padło w nim tylko kilka słów.
+    """
+    w_ujeciu = slowa[kand["od"]:kand["do"] + 1]
+    if not any(w["koniec"] - w["start"] >= DLUGIE_SLOWO for w in w_ujeciu):
+        return None
+    for _, koniec_ciszy in reversed(cisze_w_ujeciu(audio, kand["start"], kand["koniec"])):
+        blok = kand["koniec"] - koniec_ciszy
+        slow_w_bloku = sum(1 for w in w_ujeciu if w["start"] >= koniec_ciszy)
+        if blok >= ZDANIE_W_BLOKU * ile_tokenow * tempo and slow_w_bloku * tempo < SLOWA_W_BLOKU * blok:
+            return round(koniec_ciszy, 3)
+    return None
+
+
 def wybierz_ujecia(zdania: list[dict], wszyscy: list[list[dict]]) -> list[dict | None]:
     """Po jednym ujęciu na zdanie, z zachowaniem kolejności; przy remisie wygrywa ujęcie późniejsze.
 
@@ -163,6 +202,21 @@ def main() -> None:
     wszyscy = [kandydaci(z, slowa, tokeny) for z in zdania]
     wybor = wybierz_ujecia(zdania, wszyscy)
 
+    audio = a.work / "audio.wav"
+    tempo = statistics.median(w["koniec"] - w["start"] for w in slowa)
+    przyciete, do_sprawdzenia = [], []
+    for z, k in zip(zdania, wybor):
+        if not k or not audio.is_file():
+            continue
+        nowy_start = start_ostatniego_ujecia(k, slowa, len(z["tokeny"]), tempo, audio)
+        if nowy_start:
+            przyciete.append({"start": round(k["start"], 3), "koniec": nowy_start,
+                              "tekst": f"urwane podejście {z['id']}, którego transkrypcja nie zapisała",
+                              "powod": "pomyłka schowana w ujęciu"})
+            k["start"] = nowy_start
+        elif any(w["koniec"] - w["start"] >= DLUGIE_SLOWO for w in slowa[k["od"]:k["do"] + 1]):
+            do_sprawdzenia.append(z["id"])
+
     # Odcinki do zachowania. Oddech bierzemy z ciszy wokół ujęcia, ale nigdy nie wchodzimy w sąsiednie
     # ujęcie ani za jego połowę drogi — dzięki temu tam, gdzie nagrywałeś zdanie po zdaniu, w montażu
     # zostaje prawdziwa pauza z pokoju, a nie cisza doklejona z innego miejsca taśmy.
@@ -192,6 +246,7 @@ def main() -> None:
         wyciete.append({"start": round(slowa[kursor]["start"], 3), "koniec": round(slowa[-1]["koniec"], 3),
                         "tekst": " ".join(slowa[j]["slowo"] for j in range(kursor, len(slowa))),
                         "powod": "ogon nagrania"})
+    wyciete = sorted(wyciete + przyciete, key=lambda w: w["start"])
 
     dopasowane = sum(1 for k in wybor if k)
     wynik = {
@@ -201,6 +256,7 @@ def main() -> None:
         "czas_zachowany_s": round(sum(z["koniec"] - z["start"] for z in zachowaj), 2),
         "zachowaj": zachowaj,
         "wyciete": wyciete,
+        "do_sprawdzenia": do_sprawdzenia,
         "zdania": [{"id": z["id"], "rozdzial": z["rozdzial"], "en": z["en"],
                     "ujec_znalezionych": len(w),
                     "wybrane_ujecie": (w.index(k) + 1) if k else None,
@@ -230,6 +286,10 @@ def main() -> None:
     linie += ["", "## Co zostało wycięte", ""]
     linie += [f"- `{w['start']:.1f}–{w['koniec']:.1f} s` ({w['powod']}): „{w['tekst'][:120]}”"
               for w in wyciete] or ["- nic"]
+    if do_sprawdzenia:
+        linie += ["", "## Do odsłuchu", "",
+                  "W tych zdaniach jest długie słowo, ale wygląda to na pauzę, więc zostały całe: "
+                  + ", ".join(do_sprawdzenia)]
     braki = [z for z in wynik["zdania"] if not z["wybrane_ujecie"] and not z["ujec_znalezionych"]]
     if braki:
         linie += ["", "## Zdania bez ujęcia (do dogrania)", ""]
