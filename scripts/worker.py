@@ -225,6 +225,8 @@ def job(a: argparse.Namespace) -> None:
               if a.dane or belka else []),
             ("C8 napisy",     f"python3 /root/scripts/subtitles.py --work /root/praca/work --script {scen}"),
             ("C9 rozdziały",  f"python3 /root/scripts/chapters.py --work /root/praca/work --script {scen}"),
+            ("C11 render",    f"python3 /root/scripts/finish.py --work /root/praca/work --mem-max 0"),
+            ("C12 kontrola",  f"python3 /root/scripts/qc.py --work /root/praca/work --mem-max 0"),
         ]
         for nazwa, polecenie in kroki:
             print(f"\n── {nazwa} ──")

@@ -33,6 +33,10 @@ tekst EN ma być łatwy do powiedzenia.
   lejek, stres spreadu…), `BELKA: subscribe` (raz na film, przy zdaniu CTA o subskrypcji), `—`. Zasada **one idea, one graphic**: grafika najwyżej co kilka zdań.
 - Długość: ~140–150 słów EN na minutę; trzymaj się `dlugosc_docelowa`.
 
+## Kontrola przed oddaniem
+Uruchom `python3 scripts/compliance.py --script content/scripts/<slug>.md`. Popraw każdy błąd, a uwagi wypisz
+właścicielowi. Liczby z uwag sprawdź z kartą lub Ledgerem.
+
 ## Wynik
 1. `content/scripts/<slug>.md` — pełny scenariusz wg szablonu (wszystkie sekcje, tabele, trudne słowa,
    materiały do przygotowania, checklista, shorts jako zakresy ID).
