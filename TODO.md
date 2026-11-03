@@ -27,13 +27,25 @@
 - [ ] Przed produkcyjnym uruchomieniem instancji RC: przywrócić `sandbox.enabled:true`.
 - [ ] Włączyć timer: `systemctl --user enable --now yt-sync.timer`.
 - [ ] Pierwsze uruchomienie interaktywne `claude` + testy granic (krok 7 dokumentu).
-- [ ] Utworzyć prywatne repo GitHub, `git remote add origin …`, `git push -u origin main`.
+- [ ] Sparować komputer w Syncthingu (potrzebne jego Device ID) → folder `yt-komputer`, OBS pisze prosto do niego.
+- [ ] Sprawdzić pierwszy plik z telefonu: `~/sync/telefon` → `inbox/`, i czy bramka `yt*.mp4` nie przepuściła nic poza nim.
+- [ ] Poziome nagranie próbne → pełny przebieg C1–C9 na workerze (`--dane` dla grafik).
+- [ ] C6: korekcja barwna przez FFmpeg `lut3d` z pliku `.cube` + klatka przed/po do zatwierdzenia.
+- [ ] C7: animowane sekwencje klatek (Pillow) zamiast statycznych PNG; plansze sekcji z rozdziałów C9.
+- [ ] Zmierzyć dźwięk na 15-sekundowej próbce (poziom, pogłos, pasmo) przed decyzją o mikrofonie.
+- [ ] Zmienić domyślny model w `yt_watch.py` — `gemini-flash-latest` zwraca 503; działa `gemini-3.5-flash`.
+- [ ] G7: włączyć timer `worker.py reap --older-than 1` (na koniec etapu).
+- [ ] Zawęzić 13 układów miniatur do 3.
 - [ ] Uruchomić instancję Remote Control `claude-rc@YT_Channel` (bez worktree).
 
 ## W toku
 - (nic)
 
 ## Ukończone
+- [x] B3 — przesył nagrań: Syncthing po tailnecie, `scripts/odbierz.py` + timer, `docs/SYNC.md`; telefon sparowany.
+- [x] Pipeline montażu C1–C9 + worker on-demand w Hetznerze (`scripts/worker.py`).
+- [x] Ponowienia w `yt_watch.py` (model bywa przeciążony — bez nich długa analiza przepada).
+- [x] Analiza CapCut/Remotion → `docs/research/2026-11-03-capcut-remotion.md`.
 - [x] Research 10 kanałów przez YouTube Data API → `docs/research/2026-10-yt-kanaly.md`, `docs/YT_PUBLISHING_STANDARD.md`.
 - [x] Agent `yt-producer` + `/publikacja`, generator miniatur `scripts/thumbnail.py`.
 - [x] Strategia kanału: `docs/CHANNEL_STRATEGY.md`, szablony `docs/templates/`, `docs/export-yt-templates/`.
