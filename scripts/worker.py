@@ -23,6 +23,7 @@ Token: `~/.config/yt_channel/hetzner_api_token` (chmod 600). Klucz SSH: `~/.ssh/
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import subprocess
 import sys
@@ -51,6 +52,10 @@ runcmd:
   - [bash, -lc, "python3 -m venv /opt/whisper && /opt/whisper/bin/pip install -q faster-whisper numpy"]
   - [bash, -lc, "touch /var/lib/yt-worker-gotowy"]
 """
+
+
+PLIK_JOBA = Path.home() / ".local" / "state" / "yt_channel" / "worker-job.pid"
+TWARDY_LIMIT_H = 3.0
 
 
 def token() -> str:
@@ -173,22 +178,41 @@ def skasuj(serwer: dict | None = None) -> None:
     print(f"skasowany: {serwer['name']}")
 
 
+def job_dziala() -> bool:
+    """Czy na tym serwerze trwa `job`. Plik po zabitym procesie nic nie znaczy, więc sprawdzamy sam proces."""
+    try:
+        os.kill(int(PLIK_JOBA.read_text().strip()), 0)
+    except (OSError, ValueError):
+        return False
+    return True
+
+
 def reap(godziny: float) -> None:
-    """G7 — watchdog kosztów: maszyna, która przeżyła zadanie, płaci dalej."""
-    prog = datetime.now(timezone.utc) - timedelta(hours=godziny)
+    """G7 — watchdog kosztów: maszyna, która przeżyła zadanie, płaci dalej.
+
+    Rozliczamy pełne rozpoczęte godziny, więc kasujemy tuż przed kolejną. Trwającego zadania nie ruszamy:
+    utrata montażu kosztuje więcej niż dodatkowa godzina. Górny limit chroni przed zawieszonym zadaniem.
+    """
+    teraz = datetime.now(timezone.utc)
+    prog = teraz - timedelta(hours=godziny)
+    twardy_prog = teraz - timedelta(hours=TWARDY_LIMIT_H)
+    trwa_job = job_dziala()
     ilu = 0
     for s in api(f"/servers?label_selector=role={ETYKIETY['role']}")["servers"]:
         powstal = datetime.fromisoformat(s["created"].replace("Z", "+00:00"))
-        if powstal < prog:
+        if powstal < prog and (not trwa_job or powstal < twardy_prog):
             api(f"/servers/{s['id']}", "DELETE")
-            print(f"skasowany (wiek {datetime.now(timezone.utc) - powstal}): {s['name']}")
+            print(f"skasowany (wiek {teraz - powstal}): {s['name']}")
             ilu += 1
-    print(f"watchdog: skasowano {ilu}")
+    if ilu:          # timer działa co minutę, więc puste przebiegi tylko zaśmiecałyby dziennik
+        print(f"watchdog: skasowano {ilu}")
 
 
 def job(a: argparse.Namespace) -> None:
     """Pełny cykl: postaw → wyślij → C1–C5 → zabierz wynik → skasuj."""
     repo = Path(__file__).resolve().parent
+    PLIK_JOBA.parent.mkdir(parents=True, exist_ok=True)
+    PLIK_JOBA.write_text(str(os.getpid()))
     serwer = postaw()
     host = adres(serwer)
     udalo_sie = False
@@ -241,6 +265,7 @@ def job(a: argparse.Namespace) -> None:
         udalo_sie = True
         print(f"\nOK: wynik w {a.work}")
     finally:
+        PLIK_JOBA.unlink(missing_ok=True)
         if udalo_sie or not a.keep_on_error:
             skasuj(serwer)
         else:
