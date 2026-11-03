@@ -45,6 +45,10 @@ MIN_PRZERWA = 0.7           # krótsza cisza to oddech w zdaniu, nie granica uj�
 CISZA_DB = -45
 ZDANIE_W_BLOKU = 0.75       # ostatni fragment musi mieścić tyle całego zdania przy tempie mówcy…
 SLOWA_W_BLOKU = 0.6         # …a słowa z transkrypcji mają zajmować mniej niż tyle jego czasu
+# Whisper kończy słowo za wcześnie, zwłaszcza przy cichnącym głosie (2026-11-03: „results” z L012 straciło
+# ~0,4 s i film urywał się w pełnym głosie), więc koniec zdania bierzemy z dźwięku.
+OKNO_KONCA = 1.5            # jak daleko za końcem ze słów szukamy ciszy (s)
+CISZA_KONCA = 0.15          # krótsze przerwy to jeszcze środek słowa
 
 
 def tokenizuj(tekst: str) -> list[str]:
@@ -113,14 +117,23 @@ def kandydaci(zdanie: dict, slowa: list[dict], tokeny: list[str]) -> list[dict]:
     return wybrane
 
 
-def cisze_w_ujeciu(audio: Path, start: float, koniec: float) -> list[tuple[float, float]]:
-    """Cisze w odcinku nagrania, w czasie całego pliku."""
+def cisze_w_ujeciu(audio: Path, start: float, koniec: float,
+                   min_cisza: float = MIN_PRZERWA) -> list[tuple[float, float | None]]:
+    """Cisze w odcinku nagrania, w czasie całego pliku. Cisza trwająca do końca odcinka ma koniec None."""
     res = subprocess.run(["ffmpeg", "-nostdin", "-hide_banner", "-ss", f"{start:.3f}", "-t", f"{koniec - start:.3f}",
-                          "-i", str(audio), "-af", f"silencedetect=noise={CISZA_DB}dB:d={MIN_PRZERWA}",
+                          "-i", str(audio), "-af", f"silencedetect=noise={CISZA_DB}dB:d={min_cisza}",
                           "-f", "null", "-"], capture_output=True, text=True)
     pocz = [float(x) + start for x in re.findall(r"silence_start: ([\d.]+)", res.stderr)]
     konc = [float(x) + start for x in re.findall(r"silence_end: ([\d.]+)", res.stderr)]
-    return list(zip(pocz, konc))
+    return [(p, konc[i] if i < len(konc) else None) for i, p in enumerate(pocz)]
+
+
+def koniec_z_dzwieku(audio: Path, koniec: float) -> tuple[float, float | None]:
+    """Prawdziwy koniec mowy i początek następnej. Bez ciszy w oknie zostaje koniec ze słów."""
+    cisze = cisze_w_ujeciu(audio, koniec, koniec + OKNO_KONCA, CISZA_KONCA)
+    if not cisze:
+        return koniec, None
+    return round(max(koniec, cisze[0][0]), 3), cisze[0][1]
 
 
 def start_ostatniego_ujecia(kand: dict, slowa: list[dict], ile_tokenow: int, tempo: float,
@@ -134,6 +147,8 @@ def start_ostatniego_ujecia(kand: dict, slowa: list[dict], ile_tokenow: int, tem
     if not any(w["koniec"] - w["start"] >= DLUGIE_SLOWO for w in w_ujeciu):
         return None
     for _, koniec_ciszy in reversed(cisze_w_ujeciu(audio, kand["start"], kand["koniec"])):
+        if koniec_ciszy is None:
+            continue
         blok = kand["koniec"] - koniec_ciszy
         slow_w_bloku = sum(1 for w in w_ujeciu if w["start"] >= koniec_ciszy)
         if blok >= ZDANIE_W_BLOKU * ile_tokenow * tempo and slow_w_bloku * tempo < SLOWA_W_BLOKU * blok:
@@ -208,6 +223,7 @@ def main() -> None:
     for z, k in zip(zdania, wybor):
         if not k or not audio.is_file():
             continue
+        k["koniec"], k["nastepna_mowa"] = koniec_z_dzwieku(audio, k["koniec"])
         nowy_start = start_ostatniego_ujecia(k, slowa, len(z["tokeny"]), tempo, audio)
         if nowy_start:
             przyciete.append({"start": round(k["start"], 3), "koniec": nowy_start,
@@ -224,7 +240,10 @@ def main() -> None:
     zachowaj, pozycje = [], []
     for i, (z, kand) in enumerate(uzyte):
         poprzedni_koniec = uzyte[i - 1][1]["koniec"] if i else 0.0
-        nastepny_start = uzyte[i + 1][1]["start"] if i + 1 < len(uzyte) else kand["koniec"] + a.margines_po
+        # bez kolejnego ujęcia ogranicza nas tylko margines; dalej może paść mowa spoza scenariusza
+        nastepny_start = uzyte[i + 1][1]["start"] if i + 1 < len(uzyte) else kand["koniec"] + 2 * a.margines_po
+        if kand.get("nastepna_mowa"):
+            nastepny_start = min(nastepny_start, kand["nastepna_mowa"])
         start = max(poprzedni_koniec + (kand["start"] - poprzedni_koniec) / 2 if i else 0.0,
                     kand["start"] - a.margines_przed, 0.0)
         koniec = min(kand["koniec"] + (nastepny_start - kand["koniec"]) / 2,

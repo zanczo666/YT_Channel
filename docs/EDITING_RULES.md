@@ -29,6 +29,8 @@
 5. Cięcie dźwięku zawsze z krótkim wygaszeniem (~20 ms), nigdy w gołym przebiegu fali.
 6. Przy planowaniu kolumny „Na ekranie”: **sklejki planuj tam, gdzie i tak wchodzi grafika lub zrzut** —
    wtedy nie widać ich wcale.
+7. **Koniec zdania wyznacza dźwięk, nie czasy słów z Whispera.** Whisper kończy cichnące słowo za wcześnie,
+   a odcinek musi sięgać ciszy (uwaga „ucięte results”, `content/notes/_test-nagranie-cut2.md`).
 
 ## Dźwięk
 1. Muzyka pod głosem cicho (poziom do ustalenia na pierwszym filmie); bez efektów „whoosh” przy każdym cięciu.
