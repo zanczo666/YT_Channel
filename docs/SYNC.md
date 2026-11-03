@@ -46,19 +46,48 @@ komputer ──┘                    ~/sync/komputer ──┘
 ## Telefon (Android)
 
 1. **Tailscale musi być włączony** (VPN aktywny) — bez niego adres `100.69.173.24` nie istnieje.
-   Telefon jest już w tailnecie jako `redmi-note-14-pro-5g`.
+   Telefon jest już w tailnecie jako `redmi-note-14-pro-5g`. Warto ustawić „always on” i wyjąć
+   Tailscale oraz Syncthinga z optymalizacji baterii — inaczej Android je uśpi i nagranie pojedzie
+   dopiero po odblokowaniu telefonu.
 2. Zainstaluj **Syncthing-Fork** (Catfriend1) z F-Droida albo Google Play. Oficjalna aplikacja
    „Syncthing” została wycofana przez autorów — fork jest tym utrzymywanym.
-3. Przy pierwszym starcie aplikacja generuje własną tożsamość. Skopiuj **Device ID** telefonu
-   (Menu → Ustawienia → Pokaż ID urządzenia) i prześlij mi go — dopisuję urządzenie na serwerze
-   i udostępniam mu folder `yt-telefon`. Wtedy w telefonie pojawi się propozycja folderu do przyjęcia.
-4. Przyjmując folder wskaż katalog na nagrania i ustaw typ **Send Only**.
-   - **Zalecane:** osobny katalog, np. `/storage/emulated/0/YT-nagrania`, i przenoszenie tam nagrania
-     po nakręceniu. Jawne, nic przypadkiem nie wyjedzie z telefonu.
-   - **Zero kroków po nagraniu:** katalog kamery `DCIM/Camera` — wtedy **każdy** film z telefonu trafia
-     na serwer. Wygodne, ale to decyzja o prywatności; `odbierz.py` i tak bierze tylko pliki wideo.
-5. W ustawieniach aplikacji warto włączyć „Run on mobile data” tylko świadomie — nagranie to ~200 MB.
-   Na Wi-Fi przesył idzie bezpośrednio po tailnecie.
+3. Dodaj urządzenie `claudecore`: ID i adres `tcp://100.69.173.24:22000` z tabeli wyżej.
+   Adres trzeba wpisać ręcznie zamiast `dynamic` — odkrywanie globalne jest wyłączone po obu stronach.
+4. Serwer ma już udostępniony folder `yt-telefon`, więc w telefonie pojawi się propozycja do przyjęcia.
+   Wskaż **`/storage/emulated/0/DCIM/Camera`** i ustaw typ **Send Only**.
+
+### Dlaczego folder kamery, a nie osobny katalog
+
+Aparat w HyperOS (Redmi Note 14 Pro+) **nie pozwala zmienić katalogu zapisu** — Android narzuca
+`DCIM/Camera`. Alternatywy są gorsze: inna aplikacja aparatu (np. Open Camera) umie wskazać folder,
+ale traci przetwarzanie obrazu Xiaomi, a dla gadającej głowy jakość obrazu jest ważniejsza niż wygoda
+ścieżki; reguła w Tasker/MacroDroid przenosząca pliki to kolejny element, który może się zepsuć po cichu.
+Dlatego synchronizujemy folder kamery i **odsiewamy na dwóch poziomach**.
+
+**Poziom 1 — Syncthing w telefonie.** W ustawieniach folderu wpisz wzorce ignorowania:
+
+```
+.pending-*
+.trashed-*
+!*.mp4
+!*.MP4
+*
+```
+
+Pierwszy pasujący wzorzec wygrywa, więc: pliki tymczasowe Androida odpadają, filmy przechodzą,
+**zdjęcia i wszystko inne nie opuszczają telefonu**. `.pending-…` to nagranie w trakcie zapisu
+(MediaStore nadaje docelową nazwę dopiero po zamknięciu pliku), `.trashed-…` to kosz galerii —
+oba kończą się na `.mp4`, więc sam filtr po rozszerzeniu by ich nie złapał.
+
+**Poziom 2 — serwer.** `odbierz.py` pomija filmy krótsze niż **20 s** (`MIN_CZAS_S`), bo folder kamery
+zawiera wszystko, co nagrasz telefonem, a nie tylko materiał na kanał. Pominięcia idą do logu z
+podpowiedzią; jeśli któryś krótki film jest potrzebny, odbierz go ręcznie:
+
+```bash
+python3 ~/projects/YT_Channel/scripts/odbierz.py --min-czas 0
+```
+
+5. Syncthing-Fork ma osobny przełącznik „Run on mobile data”. Nagranie to ~200 MB, więc raczej tylko Wi-Fi.
 
 ## Komputer (Windows)
 
