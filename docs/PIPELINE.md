@@ -25,7 +25,9 @@ Czego **nie da się** (dziś) zautomatyzować w 100% — i dlaczego:
 - **Rozliczenie Hetznera: pełna rozpoczęta godzina** (bez naliczania minutowego) → nie optymalizujemy czasu
   poniżej godziny, za to **oba filmy z jednej sesji nagraniowej montujemy w jednym uruchomieniu** workera
   (jedna płatna godzina na dwa filmy). Koszt: ~0,27 € za przebieg, ~7 € rocznie.
-- **Przesył:** Syncthing — z telefonu i z komputera (OBS zapisuje do synchronizowanego folderu); jeden `inbox/`.
+- **Przesył:** Syncthing **po tailnecie** (decyzja 2026-11-03) — z telefonu i z komputera (OBS zapisuje do
+  synchronizowanego folderu); jeden `inbox/`. Tailscale jest już na wszystkich urządzeniach, więc Syncthing
+  nie potrzebuje ani jednego portu otwartego na świat. Szczegóły i instrukcja klientów: `docs/SYNC.md`.
 - **Powiadomienia i akceptacje:** Discord — prywatny serwer, bot na VPS z przyciskami Akceptuj/Popraw.
 
 ## 2. Przepływ (maszyna stanów jednego filmu)
@@ -54,7 +56,7 @@ idempotentny, logowany, z powiadomieniem przy błędzie.
 |---|---|---|---|
 | B1 | Teleprompter | ✅ | `<slug>.teleprompter.txt` → darmowa aplikacja na telefonie |
 | B2 | Standard nagrania | ⬜ | `docs/RECORDING.md`: kadr, światło, dźwięk, 1080p/30 lub 4K/30, „pomyłka → powtórz całe zdanie”, nazewnictwo |
-| B3 | Automatyczny przesył | ⬜ | **Syncthing** (darmowy, bez chmury): telefon i komputer (OBS) → VPS `inbox/`; runner wykrywa nowe pliki |
+| B3 | Automatyczny przesył | ✅ | **Syncthing po tailnecie** — `docs/SYNC.md`. Nasłuch tylko na adresie Tailscale, odkrywanie globalne/relaye/NAT wyłączone (zero portów na świat; `ufw` przepuszcza wyłącznie `tailscale0`). Foldery serwera `~/sync/telefon` i `~/sync/komputer` są **receive only** — nic z serwera nie wróci do telefonu. Do `inbox/` przenosi `scripts/odbierz.py` z timera co minutę: **twarde łącze** (bez drugiej kopii 200 MB; usunięcie w telefonie nie zabiera materiału z serwera) i warunek **niezmiennego rozmiaru przez 45 s** — sam przesył Syncthinga jest atomowy, ale OBS pisze prosto do folderu synchronizowanego, więc serwer widzi rosnący plik pod docelową nazwą. Osobne `~/sync` zamiast synchronizowania `inbox/` wprost: inaczej każda operacja montażu byłaby dla Syncthinga lokalną zmianą do pogodzenia |
 | B4 | Sesje seriami | ⬜ | 2 scenariusze na sesję co 2 tygodnie |
 
 ### C. Postprodukcja (worker on-demand — patrz G3)
