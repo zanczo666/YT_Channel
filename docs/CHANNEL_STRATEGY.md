@@ -4,8 +4,8 @@ _Wersja 1.0 — 2026-10-21. Źródło decyzji: sesja planowania z 2026-10-20/21.
 
 ## 1. Tożsamość
 
-- **Nazwa kanału:** „Imię Nazwisko — Systematic Trading Research” (marka osobista).
-- **QuantInvest** = „my research lab”: miejsce, w którym powstają badania (opis kanału, strona z metodologią i Ledgerem). Nie przedstawiamy go jako firmy, która coś oferuje.
+- **Nazwa kanału:** „Radoslaw Lubas - Systematic Trading Lab” (marka osobista, decyzja 2026-11-03). Adres: `@radoslawlubas`.
+- **QuantInvest** = „my research lab”: miejsce, w którym powstają badania. Nie przedstawiamy go jako firmy, która coś oferuje. **Do odwołania nie linkujemy go i nie wymieniamy na kanale**, bo strona jest dziś sklepem bez Methodology i Ledgera (2026-11-03).
 - **Pozycjonowanie:** *„I build and stress-test trading systems in public, from research papers to live algorithms, and I publish what fails.”*
 - **Linie brandowe:**
   - *„Profitable backtests are easy to sell. I test whether they survive.”* (słowo „sell” odnosi się do innych)

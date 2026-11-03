@@ -11,7 +11,8 @@
 - [ ] **Fabryka:** Research Ledger z ID `QF-xxx` i powodem odrzutu na każdym etapie.
 - [ ] **Fabryka:** zapisywanie źródła publikacji (autorzy, tytuł, rok) dla każdej strategii.
 - [ ] **Fabryka:** pierwszy miesięczny raport `export/yt/funnel/RRRR-MM.md` (tylko realne liczby).
-- [ ] Kanał: ostateczna nazwa („Imię Nazwisko — Systematic Trading Research”), baner, opis z QuantInvest jako „my research lab”.
+- [x] Kanał: ostateczna nazwa „Radoslaw Lubas - Systematic Trading Lab”
+- [ ] Kanał: baner, awatar i opis do zatwierdzenia (`docs/CHANNEL_SETUP.md`), bez QuantInvest do odwołania.
 - [ ] Strona QuantInvest: sekcje Methodology (bramki v1.0) i Research Ledger (także odrzuty).
 - [ ] Newsletter z miesięcznym raportem lejka (wybór darmowego narzędzia).
 - [ ] Filmy bez zależności od fabryki: #1 intro, #2 Validation Gates #1, #5 Tools (`content/ideas/2026-10-21-plan-startowy.md`).

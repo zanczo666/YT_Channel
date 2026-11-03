@@ -23,9 +23,9 @@ Chapters
 📄 Sources
 - <Autorzy (rok). Tytuł. Czasopismo. DOI / link>
 
-🔬 Research lab — methodology & full research ledger (including rejected strategies): <LINK>
+<!-- Linia „Research lab” wraca dopiero po decyzji właściciela (Methodology i Ledger na stronie; CLAUDE.md). -->
 🛠 Free MT5 tools (MQL5 Code Base): <LINK>
-✉️ Monthly funnel report (newsletter): <LINK>
+<!-- Newsletter wraca razem z linkiem do strony. -->
 
 Subtitles: English, Polski.
 

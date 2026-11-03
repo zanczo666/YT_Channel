@@ -67,7 +67,8 @@ def sk(wartosc: float) -> int:
 PRZENIKANIE = 0.35          # sekundy wejścia i zejścia grafiki
 MIN_PLAN_S = 1.2            # krótszy błysk grafiki męczy, zamiast pomagać
 DLUGOSC_BELKI = 4.0         # tyle zajmuje przeczytanie; dłużej zaczyna przeszkadzać
-NAZWA_KANALU = "Systematic Trading Research"
+NAZWA_KANALU = "Radoslaw Lubas - Systematic Trading Lab"
+NAZWA_NA_BELCE = "Radoslaw Lubas"     # pełna nazwa zajęłaby pół kadru
 CZERWIEN_SUBSKRYPCJI = (204, 0, 0)
 
 WIERSZ_EKRAN = re.compile(r"^\|\s*(L\d{3,})\s*\|[^|]*\|[^|]*\|([^|]*)\|", re.MULTILINE)
@@ -304,12 +305,12 @@ def renderuj_belke(cel: Path) -> None:
     rysuj = ImageDraw.Draw(obraz)
     f_nazwa, f_przycisk = font(FONT_BOLD, sk(36)), font(FONT_BOLD, sk(34))
     wys, odstep = sk(76), sk(22)
-    szer_nazwy = rysuj.textlength(NAZWA_KANALU, font=f_nazwa)
+    szer_nazwy = rysuj.textlength(NAZWA_NA_BELCE, font=f_nazwa)
     szer_przycisku = rysuj.textlength("SUBSCRIBE", font=f_przycisk) + 2 * sk(26)
     x0, y0 = MARGINES, WYSOKOSC - sk(280)
     x1 = x0 + odstep + szer_nazwy + odstep + szer_przycisku + sk(10)
     rysuj.rounded_rectangle([x0, y0, x1, y0 + wys], radius=sk(14), fill=(*BG, 225))
-    rysuj.text((x0 + odstep, y0 + wys / 2), NAZWA_KANALU, font=f_nazwa, fill=TEXT, anchor="lm")
+    rysuj.text((x0 + odstep, y0 + wys / 2), NAZWA_NA_BELCE, font=f_nazwa, fill=TEXT, anchor="lm")
     px0 = x1 - sk(10) - szer_przycisku
     rysuj.rounded_rectangle([px0, y0 + sk(10), x1 - sk(10), y0 + wys - sk(10)], radius=sk(10), fill=CZERWIEN_SUBSKRYPCJI)
     rysuj.text(((px0 + x1 - sk(10)) / 2, y0 + wys / 2), "SUBSCRIBE", font=f_przycisk, fill=TEXT, anchor="mm")

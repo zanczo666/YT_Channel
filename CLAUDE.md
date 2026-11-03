@@ -1,6 +1,6 @@
 # YT_Channel
 
-Kanał YouTube „Imię Nazwisko — Systematic Trading Research”: budowa i testowanie systemów tradingowych publicznie,
+Kanał YouTube „Radoslaw Lubas - Systematic Trading Lab”: budowa i testowanie systemów tradingowych publicznie,
 od publikacji naukowych do działających algorytmów, łącznie z tym, co odpada. QuantInvest = „my research lab”.
 Pełna strategia kanału: `docs/CHANNEL_STRATEGY.md` (czytaj przed pracą nad pomysłami i scenariuszami).
 
@@ -30,6 +30,8 @@ Pełna strategia kanału: `docs/CHANNEL_STRATEGY.md` (czytaj przed pracą nad po
 - Faza budowania zaufania (do odwołania przez właściciela): zero języka sprzedaży o sobie i QuantInvest
   („we/I sell”, „buy”, „our product”, „offer”, „discount”, „get my EA” i warianty). O innych wolno („they sell…”).
   CTA tylko niesprzedażowe: darmowe narzędzia, profil mql5.com, Methodology/Ledger, newsletter.
+- **Nie linkuj quantinvest.co i nie wymieniaj QuantInvest w materiałach kanału** do odwołania przez właściciela
+  (decyzja 2026-11-03): strona jest sklepem, a Methodology i Ledgera jeszcze nie ma. Na razie linkujemy tylko mql5.com.
 - Nie wyciągamy klientów z MQL5 Freelance poza platformę.
 
 ## Konwencje

@@ -14,7 +14,7 @@ Wymaga Pillow (uruchamiać `python3`, nie `python3 -I`).
 
 Użycie:
     python3 scripts/thumbnail_feed.py --title "Why a profitable backtest proves almost nothing" \\
-        --channel "Imię Nazwisko" --duration 12:40 --others ~/yt-research/thumbs/*.jpg \\
+        --channel "Radoslaw Lubas" --duration 12:40 --others ~/yt-research/thumbs/*.jpg \\
         --out content/publish/<slug>/feed.png content/publish/<slug>/thumbnail-*.jpg
 """
 
@@ -134,7 +134,7 @@ def render(theme: str, ours: list[Path], others: list[Path], a) -> Image.Image:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--title", required=True, help="tytuł filmu (EN) — taki, jak będzie pod miniaturą")
-    ap.add_argument("--channel", default="Imię Nazwisko")
+    ap.add_argument("--channel", default="Radoslaw Lubas")
     ap.add_argument("--duration", default="12:00")
     ap.add_argument("--others", nargs="*", type=Path, default=[], help="inne miniatury do feedu")
     ap.add_argument("--out", required=True, type=Path)

@@ -99,9 +99,9 @@ idempotentny, logowany, z powiadomieniem przy błędzie.
 | # | Element | Status | Opis |
 |---|---|---|---|
 | F1 | Konto | ⬜ | **Konto marki (Brand Account)** — możliwość dodania menedżerów, oddzielenie od prywatnego Gmaila; weryfikacja telefonu (własne miniatury, filmy >15 min) |
-| F2 | Wygląd | ⬜ | awatar 800×800, baner 2560×1440 (bezpieczna strefa 1546×423), znak wodny „subskrybuj”, zwiastun kanału (film #1) |
-| F3 | Opisy | ⬜ | opis kanału EN + lokalizacja PL, linki (QuantInvest, mql5.com, newsletter), e-mail kontaktowy |
-| F4 | Domyślne ustawienia przesyłania | ⬜ | kategoria, język, licencja, komentarze, tagi bazowe, disclaimer w opisie |
+| F2 | Wygląd | 🟡 | szkice z `scripts/brand.py` w `assets/brand/`: awatar 800×800, baner 2560×1440 (bezpieczna strefa 1546×423), znak wodny 150×150. Do zatwierdzenia; ustawia się w Studio. Zwiastun kanału: film #1 |
+| F3 | Opisy | 🟡 | `docs/CHANNEL_SETUP.md`: opis EN + PL. Brakuje linku do profilu mql5.com i e-maila kontaktowego |
+| F4 | Domyślne ustawienia przesyłania | 🟡 | `docs/CHANNEL_SETUP.md`: wartości do ręcznego ustawienia w Studio |
 | F5 | Układ kanału | ⬜ | sekcje i playlisty filarów |
 | F6 | Brand kit | 🟡 | kolory i font są; dodać: logo/awatar, dźwięk identyfikacji, szablon dolnej belki, szablon planszy końcowej (`assets/brand/`) |
 | F7 | Strona i prawo | ⬜ | quantinvest.co: Methodology, Ledger, **polityka prywatności** (audyt API), disclaimer |
