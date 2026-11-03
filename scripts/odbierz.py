@@ -40,7 +40,7 @@ LOG = Path("/home/claude/.local/state/yt_channel/odbierz.log")
 
 STABILNE_S = 45.0          # tyle plik musi być niezmienny, żeby uznać go za kompletny
 MIN_ROZMIAR = 1_000_000    # poniżej 1 MB to nie nagranie, a pomyłka albo miniatura
-MIN_CZAS_S = 20.0          # krótsze filmy to nie materiał na kanał — patrz niżej
+MIN_CZAS_S = 0.0           # patrz niżej: bramka jest w telefonie, nie tutaj
 ROZSZERZENIA = {".mp4", ".mov", ".mkv", ".m4v", ".avi", ".wav", ".m4a"}
 # `.pending-` i `.trashed-` to pliki Androida: pierwszy to nagranie **w trakcie** zapisu (MediaStore
 # nadaje docelową nazwę dopiero po zamknięciu), drugi to kosz galerii. Oba kończą się na `.mp4`,
@@ -169,8 +169,10 @@ def main() -> None:
         if teraz - wpis["od"] < a.stabilne:
             continue
 
-        # Folder kamery zawiera **wszystko**, co nagrasz telefonem, a nie tylko materiał na kanał.
-        # Krótkie klipy odsiewamy tutaj, nie w Syncthingu: tam nie ma filtra po długości.
+        # Domyślnie wyłączone (MIN_CZAS_S = 0). Wzorce ignorowania w telefonie przepuszczają tylko
+        # pliki `yt*.mp4`, a nazwę zmienia właściciel po nagraniu — czyli materiał na kanał jest
+        # **zadeklarowany**, nie zgadywany z długości. Próg długości odrzucałby wtedy świadomie
+        # nagrany krótki materiał. Zostaje jako opcja na wypadek synchronizowania całego folderu kamery.
         dlugosc = czas_trwania(p) if a.min_czas > 0 else None
         if dlugosc is not None and dlugosc < a.min_czas:
             loguj(f"pomijam {klucz} — {dlugosc:.0f} s, próg to {a.min_czas:.0f} s "

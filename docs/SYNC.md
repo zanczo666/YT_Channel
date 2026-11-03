@@ -62,29 +62,38 @@ Aparat w HyperOS (Redmi Note 14 Pro+) **nie pozwala zmienić katalogu zapisu** �
 `DCIM/Camera`. Alternatywy są gorsze: inna aplikacja aparatu (np. Open Camera) umie wskazać folder,
 ale traci przetwarzanie obrazu Xiaomi, a dla gadającej głowy jakość obrazu jest ważniejsza niż wygoda
 ścieżki; reguła w Tasker/MacroDroid przenosząca pliki to kolejny element, który może się zepsuć po cichu.
-Dlatego synchronizujemy folder kamery i **odsiewamy na dwóch poziomach**.
+Dlatego synchronizujemy folder kamery, a **bramką jest nazwa pliku**.
 
-**Poziom 1 — Syncthing w telefonie.** W ustawieniach folderu wpisz wzorce ignorowania:
+**Wzorce ignorowania w telefonie** (ustawienia folderu → Ignoruj wzorce):
 
 ```
 .pending-*
 .trashed-*
-!*.mp4
-!*.MP4
+!yt*.mp4
+!yt*.MP4
+!YT*.mp4
+!YT*.MP4
 *
 ```
 
-Pierwszy pasujący wzorzec wygrywa, więc: pliki tymczasowe Androida odpadają, filmy przechodzą,
-**zdjęcia i wszystko inne nie opuszczają telefonu**. `.pending-…` to nagranie w trakcie zapisu
-(MediaStore nadaje docelową nazwę dopiero po zamknięciu pliku), `.trashed-…` to kosz galerii —
-oba kończą się na `.mp4`, więc sam filtr po rozszerzeniu by ich nie złapał.
+Pierwszy pasujący wzorzec wygrywa. Z folderu wychodzą **wyłącznie pliki `yt*.mp4`** — zdjęcia, zrzuty
+ekranu i wcześniejsze filmy `VID_…` zostają w telefonie. Cztery warianty wielkości liter, bo wzorce
+Syncthinga są domyślnie wrażliwe na wielkość znaków.
 
-**Poziom 2 — serwer.** `odbierz.py` pomija filmy krótsze niż **20 s** (`MIN_CZAS_S`), bo folder kamery
-zawiera wszystko, co nagrasz telefonem, a nie tylko materiał na kanał. Pominięcia idą do logu z
-podpowiedzią; jeśli któryś krótki film jest potrzebny, odbierz go ręcznie:
+**Jak się tego używa:** nagrywasz normalnie aparatem, potem w galerii albo menedżerze plików zmieniasz
+nazwę na `yt-<cokolwiek>.mp4`. Ta zmiana nazwy **jest** decyzją „to idzie na kanał” — nic nie wyjeżdża
+z telefonu przypadkiem, a system nie musi zgadywać z długości ani daty, co jest materiałem.
+
+`.pending-…` to nagranie w trakcie zapisu (MediaStore nadaje docelową nazwę dopiero po zamknięciu pliku),
+`.trashed-…` to kosz galerii. Zostają na liście jako zabezpieczenie: gdyby nazwa zmieniła się jeszcze
+w trakcie zapisu, niedokończony plik i tak nie pojedzie.
+
+**Próg długości na serwerze jest wyłączony** (`MIN_CZAS_S = 0`). Miał sens, dopóki na serwer trafiał
+cały folder kamery i trzeba było odsiewać przypadkowe klipy; przy bramce w nazwie odrzucałby świadomie
+nagrany krótki materiał. Zostaje jako opcja:
 
 ```bash
-python3 ~/projects/YT_Channel/scripts/odbierz.py --min-czas 0
+python3 ~/projects/YT_Channel/scripts/odbierz.py --min-czas 20
 ```
 
 5. Syncthing-Fork ma osobny przełącznik „Run on mobile data”. Nagranie to ~200 MB, więc raczej tylko Wi-Fi.
