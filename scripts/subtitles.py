@@ -31,6 +31,7 @@ LINIE = 2
 MIN_CZAS = 1.0          # krócej niż sekunda widz nie zdąży przeczytać
 MAX_CZAS = 7.0
 PRZERWA = 0.08          # szczelina między napisami, żeby zmiana była widoczna
+PODTRZYMANIE = 0.5      # napis zostaje chwilę po ostatnim słowie (uwaga właściciela, 2026-11-03)
 
 WIERSZ_PL = re.compile(r"^\|\s*(L\d{3,})\s*\|[^|]*\|([^|]*)\|", re.MULTILINE)
 
@@ -197,8 +198,10 @@ def main() -> None:
                 wpisy_pl.append({"od": od, "do": max(do, od + MIN_CZAS),
                                  "tekst": " ".join(slowa_pl[i] for i in k), "id": odcinek["id"]})
 
-    # napisy nie mogą na siebie nachodzić — kolejny zaczyna się po poprzednim
+    # napisy nie mogą na siebie nachodzić — kolejny zaczyna się po poprzednim, ostatni kończy się z filmem
     for wpisy in (wpisy_en, wpisy_pl):
+        for w in wpisy:
+            w["do"] = min(w["do"] + PODTRZYMANIE, cut["dlugosc_s"])
         for i in range(len(wpisy) - 1):
             if wpisy[i]["do"] > wpisy[i + 1]["od"] - PRZERWA:
                 wpisy[i]["do"] = max(wpisy[i]["od"] + 0.3, wpisy[i + 1]["od"] - PRZERWA)

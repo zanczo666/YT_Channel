@@ -32,5 +32,8 @@
 7. **Koniec zdania wyznacza dźwięk, nie czasy słów z Whispera.** Whisper kończy cichnące słowo za wcześnie,
    a odcinek musi sięgać ciszy (uwaga „ucięte results”, `content/notes/_test-nagranie-cut2.md`).
 
+## Napisy
+1. Napis zostaje **0,5 s** po ostatnim słowie, o ile wcześniej nie zaczyna się następny (uwaga z v3, 2026-11-03).
+
 ## Dźwięk
 1. Muzyka pod głosem cicho (poziom do ustalenia na pierwszym filmie); bez efektów „whoosh” przy każdym cięciu.
