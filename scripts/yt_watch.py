@@ -14,7 +14,9 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import socket
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -51,12 +53,50 @@ def video_id(url: str) -> str:
     return m.group(1)
 
 
+# Analiza godzinnego filmu potrafi liczyć się kilkanaście minut, a model bywa przeciążony.
+# Bez ponowień każda taka wpadka kasuje cały przebieg — i dowiadujemy się o tym po kwadransie.
+PONAWIALNE = {429, 500, 502, 503, 504}
+
+
+def pobierz(model: str, body: dict, key: str, proby: int, czas: int) -> dict | None:
+    """Zapytanie do Gemini z ponowieniami. `None`, gdy nie udało się w żadnym podejściu."""
+    for proba in range(1, proby + 1):
+        req = urllib.request.Request(
+            API.format(model=model), data=json.dumps(body).encode(),
+            headers={"Content-Type": "application/json", "x-goog-api-key": key},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=czas) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            try:
+                komunikat = json.load(e).get("error", {}).get("message")
+            except json.JSONDecodeError:
+                komunikat = e.reason
+            if e.code not in PONAWIALNE or proba == proby:
+                print(f"BŁĄD Gemini HTTP {e.code}: {komunikat}", file=sys.stderr)
+                return None
+            powod = f"HTTP {e.code}"
+        except (urllib.error.URLError, socket.timeout, TimeoutError) as e:
+            if proba == proby:
+                print(f"BŁĄD połączenia: {e}", file=sys.stderr)
+                return None
+            powod = f"zerwane połączenie ({e})"
+        # odstęp rośnie wykładniczo: przeciążenie modelu mija w minutach, nie w sekundach
+        czekaj = 30 * 2 ** (proba - 1)
+        print(f"     podejście {proba}/{proby} nieudane ({powod}) — czekam {czekaj} s", file=sys.stderr)
+        time.sleep(czekaj)
+    return None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", required=True)
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--model", default="gemini-flash-latest")
     ap.add_argument("--question", default=DEFAULT_QUESTION)
+    ap.add_argument("--proby", type=int, default=4, help="ile podejść przy 503 / zerwanym połączeniu")
+    ap.add_argument("--czas", type=int, default=1800, help="limit na jedno podejście w sekundach")
     a = ap.parse_args()
 
     clean_url = f"https://www.youtube.com/watch?v={video_id(a.url)}"  # bez parametrów typu &t=
@@ -68,16 +108,8 @@ def main() -> int:
         ]}],
         "generationConfig": {"maxOutputTokens": 65536, "temperature": 0.2},
     }
-    req = urllib.request.Request(
-        API.format(model=a.model), data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json", "x-goog-api-key": key},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=900) as r:
-            d = json.load(r)
-    except urllib.error.HTTPError as e:
-        err = json.load(e).get("error", {})
-        print(f"BŁĄD Gemini HTTP {e.code}: {err.get('message')}", file=sys.stderr)
+    d = pobierz(a.model, body, key, a.proby, a.czas)
+    if d is None:
         return 1
 
     cand = (d.get("candidates") or [{}])[0]
