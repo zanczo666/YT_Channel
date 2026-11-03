@@ -27,6 +27,7 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 import sys
 import time
 from datetime import datetime
@@ -39,8 +40,13 @@ LOG = Path("/home/claude/.local/state/yt_channel/odbierz.log")
 
 STABILNE_S = 45.0          # tyle plik musi być niezmienny, żeby uznać go za kompletny
 MIN_ROZMIAR = 1_000_000    # poniżej 1 MB to nie nagranie, a pomyłka albo miniatura
+MIN_CZAS_S = 20.0          # krótsze filmy to nie materiał na kanał — patrz niżej
 ROZSZERZENIA = {".mp4", ".mov", ".mkv", ".m4v", ".avi", ".wav", ".m4a"}
-POMIJAJ = (".syncthing.", "~syncthing~", ".stfolder", ".stignore", ".stversions")
+# `.pending-` i `.trashed-` to pliki Androida: pierwszy to nagranie **w trakcie** zapisu (MediaStore
+# nadaje docelową nazwę dopiero po zamknięciu), drugi to kosz galerii. Oba kończą się na `.mp4`,
+# więc filtr po rozszerzeniu ich nie złapie.
+POMIJAJ = (".syncthing.", "~syncthing~", ".stfolder", ".stignore", ".stversions",
+           ".pending-", ".trashed-")
 
 
 def loguj(tekst: str) -> None:
@@ -50,15 +56,32 @@ def loguj(tekst: str) -> None:
     print(tekst)
 
 
+PUSTY = {"obserwowane": {}, "odebrane": {}, "pominiete": {}}
+
+
 def czytaj_stan() -> dict:
     if not STAN.is_file():
-        return {"obserwowane": {}, "odebrane": {}}
+        return dict(PUSTY)
     try:
-        return json.loads(STAN.read_text(encoding="utf-8"))
+        stan = json.loads(STAN.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         # uszkodzony stan nie może blokować odbioru — zaczynamy obserwację od nowa
         loguj("uwaga: stan nieczytelny, zaczynam od zera")
-        return {"obserwowane": {}, "odebrane": {}}
+        return dict(PUSTY)
+    for klucz, domyslne in PUSTY.items():
+        stan.setdefault(klucz, dict(domyslne))
+    return stan
+
+
+def czas_trwania(p: Path) -> float | None:
+    """Długość w sekundach. `None`, gdy ffprobe nie potrafi odpowiedzieć — wtedy pliku **nie**
+    odrzucamy: lepiej wpuścić coś do `inbox/` niż zgubić nagranie z powodu dziwnego kontenera."""
+    res = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                          "-of", "default=nw=1:nk=1", str(p)], capture_output=True, text=True)
+    try:
+        return float(res.stdout.strip())
+    except ValueError:
+        return None
 
 
 def zapisz_stan(stan: dict) -> None:
@@ -110,13 +133,15 @@ def main() -> None:
     ap.add_argument("--sucho", action="store_true", help="nic nie przenoś, tylko pokaż decyzje")
     ap.add_argument("--stabilne", type=float, default=STABILNE_S,
                     help="ile sekund plik musi być niezmienny (domyślnie %(default)s)")
+    ap.add_argument("--min-czas", type=float, default=MIN_CZAS_S,
+                    help="pomiń filmy krótsze niż tyle sekund; 0 = bierz wszystko (domyślnie %(default)s)")
     a = ap.parse_args()
 
     if not INBOX.is_dir():
         sys.exit(f"błąd: nie ma {INBOX}")
 
     stan = czytaj_stan()
-    obserwowane, odebrane = stan["obserwowane"], stan["odebrane"]
+    obserwowane, odebrane, pominiete = stan["obserwowane"], stan["odebrane"], stan["pominiete"]
     teraz = time.time()
     widziane, nowe = set(), 0
 
@@ -128,6 +153,11 @@ def main() -> None:
 
         if odebrane.get(klucz) == odcisk:
             continue
+        # Pominięte pamiętamy, żeby nie wołać ffprobe na tym samym pliku co minutę. Ale gdy filtr
+        # długości jest wyłączony, pamięć o pominięciu musi puścić — inaczej `--min-czas 0` nie
+        # odzyskałby pliku, co obiecuje komunikat w logu.
+        if a.min_czas > 0 and pominiete.get(klucz) == odcisk:
+            continue
         if st.st_size < MIN_ROZMIAR:
             continue
 
@@ -137,6 +167,16 @@ def main() -> None:
             obserwowane[klucz] = {"odcisk": odcisk, "od": teraz}
             continue
         if teraz - wpis["od"] < a.stabilne:
+            continue
+
+        # Folder kamery zawiera **wszystko**, co nagrasz telefonem, a nie tylko materiał na kanał.
+        # Krótkie klipy odsiewamy tutaj, nie w Syncthingu: tam nie ma filtra po długości.
+        dlugosc = czas_trwania(p) if a.min_czas > 0 else None
+        if dlugosc is not None and dlugosc < a.min_czas:
+            loguj(f"pomijam {klucz} — {dlugosc:.0f} s, próg to {a.min_czas:.0f} s "
+                  f"(odbierz ręcznie: --min-czas 0)")
+            pominiete[klucz] = odcisk
+            obserwowane.pop(klucz, None)
             continue
 
         cel = wolna_nazwa(p.name, st.st_size)
