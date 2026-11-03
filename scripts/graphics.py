@@ -19,6 +19,9 @@ Trzy kroki w jednym przebiegu:
 Format `--dane`: słownik `ID zdania` (albo nazwa motywu) → opis grafiki. Każdy wpis ma `typ`
 (`equity`, `lejek`, `metryki`, `cytat`), `tytul`, `zrodlo` (skąd liczby) i pola właściwe dla typu.
 `zrodlo: "test"` wypala na grafice znak wodny DANE TESTOWE — żeby taki materiał nie trafił na kanał.
+
+`BELKA: subscribe` w kolumnie „Na ekranie” to mała belka nad twarzą, bez danych z `--dane`. Stawiamy ją raz
+na film, przy zdaniu z CTA (`docs/YT_PUBLISHING_STANDARD.md` §9).
 """
 
 from __future__ import annotations
@@ -63,6 +66,9 @@ def sk(wartosc: float) -> int:
     return max(1, round(wartosc * SKALA))
 PRZENIKANIE = 0.35          # sekundy wejścia i zejścia grafiki
 MIN_PLAN_S = 1.2            # krótszy błysk grafiki męczy, zamiast pomagać
+DLUGOSC_BELKI = 4.0         # tyle zajmuje przeczytanie; dłużej zaczyna przeszkadzać
+NAZWA_KANALU = "Systematic Trading Research"
+CZERWIEN_SUBSKRYPCJI = (204, 0, 0)
 
 WIERSZ_EKRAN = re.compile(r"^\|\s*(L\d{3,})\s*\|[^|]*\|[^|]*\|([^|]*)\|", re.MULTILINE)
 
@@ -98,6 +104,9 @@ def plan_z_scenariusza(script: Path, cut: dict) -> list[dict]:
             plany[-1]["zdania"].append(odcinek["id"])
         else:
             plany.append(wpis)
+    for p in plany:
+        if p["rodzaj"] == "BELKA":               # czas belki nie zależy od długości zdania
+            p["do"] = min(p["od"] + DLUGOSC_BELKI, cut["dlugosc_s"])
     return [p for p in plany if p["do"] - p["od"] >= MIN_PLAN_S]
 
 
@@ -234,6 +243,24 @@ def renderuj(dane: dict, cel: Path) -> None:
     obraz.save(cel)
 
 
+def renderuj_belke(cel: Path) -> None:
+    """Mała belka z lewej, nad strefą napisów i paska odtwarzacza. Przezroczysta — twarz zostaje widoczna."""
+    obraz = Image.new("RGBA", (SZEROKOSC, WYSOKOSC), (0, 0, 0, 0))
+    rysuj = ImageDraw.Draw(obraz)
+    f_nazwa, f_przycisk = font(FONT_BOLD, sk(36)), font(FONT_BOLD, sk(34))
+    wys, odstep = sk(76), sk(22)
+    szer_nazwy = rysuj.textlength(NAZWA_KANALU, font=f_nazwa)
+    szer_przycisku = rysuj.textlength("SUBSCRIBE", font=f_przycisk) + 2 * sk(26)
+    x0, y0 = MARGINES, WYSOKOSC - sk(280)
+    x1 = x0 + odstep + szer_nazwy + odstep + szer_przycisku + sk(10)
+    rysuj.rounded_rectangle([x0, y0, x1, y0 + wys], radius=sk(14), fill=(*BG, 225))
+    rysuj.text((x0 + odstep, y0 + wys / 2), NAZWA_KANALU, font=f_nazwa, fill=TEXT, anchor="lm")
+    px0 = x1 - sk(10) - szer_przycisku
+    rysuj.rounded_rectangle([px0, y0 + sk(10), x1 - sk(10), y0 + wys - sk(10)], radius=sk(10), fill=CZERWIEN_SUBSKRYPCJI)
+    rysuj.text(((px0 + x1 - sk(10)) / 2, y0 + wys / 2), "SUBSCRIBE", font=f_przycisk, fill=TEXT, anchor="mm")
+    obraz.save(cel)
+
+
 def naloz(wejscie: Path, plany: list[dict], wyjscie: Path, mem: str) -> None:
     """Jedno przejście FFmpeg: każda grafika wchodzi i schodzi przenikaniem w swoim czasie."""
     wejscia: list[str] = ["-i", str(wejscie)]
@@ -295,6 +322,10 @@ def main() -> None:
 
     gotowe, pominiete = [], []
     for i, p in enumerate(plany):
+        if p["rodzaj"] == "BELKA":
+            plik = katalog / f"{i:02d}-belka.png"
+            renderuj_belke(plik)
+            p["plik"] = str(plik); gotowe.append(p); continue
         opis = next((dane[k] for k in (*p["zdania"], p["co"]) if k in dane), None)
         if p["rodzaj"] == "EKRAN" and isinstance(opis, str):      # gotowy zrzut albo nagranie ekranu
             p["plik"] = str(Path(opis).resolve()); gotowe.append(p); continue

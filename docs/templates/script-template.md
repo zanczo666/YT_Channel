@@ -46,7 +46,7 @@ slowa_szacunkowo: <liczba słów EN; ~140–150 słów/min>
 <!-- Krok 3: praktyka — co widz może sprawdzić u siebie. Na końcu sekcji CTA (standard §9). -->
 | ID | EN (mówione) | PL (napisy) | Na ekranie |
 |---|---|---|---|
-| Lxxx | If this kind of testing is useful, subscribe — every month I publish what survived and what didn't. | Jeśli takie testy są dla Ciebie wartościowe, zasubskrybuj — co miesiąc publikuję, co przetrwało, a co nie. | TWARZ |
+| Lxxx | If this kind of testing is useful, subscribe — every month I publish what survived and what didn't. | Jeśli takie testy są dla Ciebie wartościowe, zasubskrybuj — co miesiąc publikuję, co przetrwało, a co nie. | BELKA: subscribe |
 | Lxxx | And a like helps the video reach other systematic traders. | A łapka w górę pomaga dotrzeć do innych traderów systematycznych. | TWARZ |
 
 ## [~7:00] Verdict & numbers

@@ -46,7 +46,7 @@ LANCUCH = [("ccx33", "hel1"), ("ccx33", "fsn1"), ("ccx33", "nbg1"),
 
 CLOUD_INIT = """#cloud-config
 package_update: true
-packages: [ffmpeg, python3-venv, python3-pip, rsync]
+packages: [ffmpeg, python3-venv, python3-pip, python3-pil, fonts-urw-base35, rsync]
 runcmd:
   - [bash, -lc, "python3 -m venv /opt/whisper && /opt/whisper/bin/pip install -q faster-whisper numpy"]
   - [bash, -lc, "touch /var/lib/yt-worker-gotowy"]
@@ -204,6 +204,7 @@ def job(a: argparse.Namespace) -> None:
                             f"-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR",
                             str(plik), f"root@{host}:/root/praca/"], check=True)
 
+        belka = "BELKA:" in Path(a.script).read_text(encoding="utf-8")
         video = f"/root/praca/{Path(a.video).name}"
         scen = f"/root/praca/{Path(a.script).name}"
         kroki = [
@@ -219,8 +220,9 @@ def job(a: argparse.Namespace) -> None:
               if a.kolor else []),
             *([("C7 grafiki", f"python3 /root/scripts/graphics.py --work /root/praca/work "
                               f"--in {'kolor.mp4' if a.kolor else 'master.mp4'} "
-                              f"--script {scen} --dane /root/praca/{Path(a.dane).name} --mem-max 0")]
-              if a.dane else []),
+                              f"--script {scen} --mem-max 0"
+                              + (f" --dane /root/praca/{Path(a.dane).name}" if a.dane else ""))]
+              if a.dane or belka else []),
             ("C8 napisy",     f"python3 /root/scripts/subtitles.py --work /root/praca/work --script {scen}"),
             ("C9 rozdziały",  f"python3 /root/scripts/chapters.py --work /root/praca/work --script {scen}"),
         ]

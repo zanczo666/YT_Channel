@@ -30,7 +30,7 @@ tekst EN ma być łatwy do powiedzenia.
   czynna, słowa z codziennego angielskiego; termin techniczny tylko gdy potrzebny i raz wyjaśniony.
 - **PL:** wierne tłumaczenie do napisów (naturalna polszczyzna, poprawne znaki diakrytyczne), nie streszczenie.
 - **Na ekranie:** `TWARZ` (hook, CTA, werdykt), `EKRAN: <co dokładnie>`, `GRAFIKA: <motyw>` (equity IS/OOS,
-  lejek, stres spreadu…), `—`. Zasada **one idea, one graphic**: grafika najwyżej co kilka zdań.
+  lejek, stres spreadu…), `BELKA: subscribe` (raz na film, przy zdaniu CTA o subskrypcji), `—`. Zasada **one idea, one graphic**: grafika najwyżej co kilka zdań.
 - Długość: ~140–150 słów EN na minutę; trzymaj się `dlugosc_docelowa`.
 
 ## Wynik

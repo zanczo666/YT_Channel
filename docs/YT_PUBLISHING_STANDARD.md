@@ -119,6 +119,8 @@ Nie da się tego zmierzyć przez API — reguły z poradników i z naszej fazy z
 1. **Jedno krótkie CTA głosem po dostarczeniu wartości**, nie na starcie. Moment: zaraz po kluczowym wniosku
    albo przed werdyktem. Wzór: *„If this kind of testing is useful, subscribe — every month I publish what
    survived and what didn't. And a like helps the video reach other systematic traders.”*
+   Przy zdaniu o subskrypcji **raz na film** mała belka `BELKA: subscribe` (4 s, przenikanie, bez dźwięku i migania).
+   Na końcu filmu jej nie ma, bo tam działają klikalne elementy planszy.
 2. Na końcu (plansza 5–20 s): **subskrypcja + następny film/playlista filaru**, głosem — bo w mobilnej
    przeglądarce plansza się nie pokazuje.
 3. **Przypięty komentarz:** pytanie do widzów (np. „Which strategy should go through the pipeline next?”)
@@ -131,7 +133,7 @@ Nie da się tego zmierzyć przez API — reguły z poradników i z naszej fazy z
 - [ ] Opis wg §4, rozdziały `0:00` (min. 3), źródła, disclaimer, linki niesprzedażowe.
 - [ ] Napisy EN + PL (`.srt`).
 - [ ] Tagi 8–15, hashtagi 0–3.
-- [ ] CTA głosem w skrypcie (§9) + plansza końcowa + przypięty komentarz.
+- [ ] CTA głosem w skrypcie (§9) + belka przy CTA + plansza końcowa + przypięty komentarz.
 - [ ] Playlista filaru, numer odcinka.
 - [ ] 3–5 shorts z linkiem do filmu.
 - [ ] Embargo karty źródłowej minęło.
