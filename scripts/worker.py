@@ -213,7 +213,12 @@ def job(a: argparse.Namespace) -> None:
             ("C3 dopasowanie", f"python3 /root/scripts/align.py --work /root/praca/work --script {scen}"),
             ("C4 montaż",     f"python3 /root/scripts/cut.py --work /root/praca/work --video {video} --mem-max 0"),
             ("C5 dźwięk",     f"python3 /root/scripts/audio_master.py --work /root/praca/work --mem-max 0"),
+            # podgląd powstaje zawsze: bez niego nie ma czego zatwierdzić przed wyborem --kolor
+            ("C6 podgląd",    f"python3 /root/scripts/grade.py --work /root/praca/work --podglad --mem-max 0"),
+            *([("C6 kolor",   f"python3 /root/scripts/grade.py --work /root/praca/work --styl {a.kolor} --mem-max 0")]
+              if a.kolor else []),
             *([("C7 grafiki", f"python3 /root/scripts/graphics.py --work /root/praca/work "
+                              f"--in {'kolor.mp4' if a.kolor else 'master.mp4'} "
                               f"--script {scen} --dane /root/praca/{Path(a.dane).name} --mem-max 0")]
               if a.dane else []),
             ("C8 napisy",     f"python3 /root/scripts/subtitles.py --work /root/praca/work --script {scen}"),
@@ -251,6 +256,8 @@ def main() -> None:
     p_job.add_argument("--video", required=True, type=Path)
     p_job.add_argument("--script", required=True, type=Path)
     p_job.add_argument("--dane", type=Path, help="JSON z danymi do grafik (C7); bez niego krok pomijamy")
+    p_job.add_argument("--kolor", choices=["czysty", "kinowy", "pastelowy"],
+                       help="styl C6 zatwierdzony na podglądzie; bez niego powstaje tylko kolor-podglad.jpg")
     p_job.add_argument("--model", default="large-v3")
     p_job.add_argument("--keep-on-error", action="store_true", default=True)
     a = ap.parse_args()

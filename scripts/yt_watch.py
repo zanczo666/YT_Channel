@@ -6,7 +6,7 @@ i zapisuje go do pliku. Klucz API czytany WYŁĄCZNIE z `~/.config/yt_channel/ge
 jest wypisywany. Darmowy limit Gemini: ok. 8 h filmów YouTube dziennie; tylko filmy publiczne.
 
 Użycie:
-    python3 scripts/yt_watch.py --url <link> --out <plik.md> [--model gemini-flash-latest] [--question "..."]
+    python3 scripts/yt_watch.py --url <link> --out <plik.md> [--model gemini-3.5-flash] [--question "..."]
 """
 
 from __future__ import annotations
@@ -93,7 +93,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", required=True)
     ap.add_argument("--out", required=True, type=Path)
-    ap.add_argument("--model", default="gemini-flash-latest")
+    ap.add_argument("--model", default="gemini-3.5-flash")
     ap.add_argument("--question", default=DEFAULT_QUESTION)
     ap.add_argument("--proby", type=int, default=4, help="ile podejść przy 503 / zerwanym połączeniu")
     ap.add_argument("--czas", type=int, default=1800, help="limit na jedno podejście w sekundach")
