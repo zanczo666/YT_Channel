@@ -1,6 +1,6 @@
 # Ustawienia kanału (do ręcznego wprowadzenia w YouTube Studio)
 
-Wartości do wklejenia. `<LINK_MQL5>` i `<EMAIL>` uzupełnia właściciel. Grafiki: `assets/brand/` (`scripts/brand.py`).
+Wartości do wklejenia. `<EMAIL>` uzupełnia właściciel: osobny adres kontaktowy, nie ten do logowania na konto. Grafiki: `assets/brand/` (`scripts/brand.py`).
 
 ## Tożsamość
 - Nazwa: **Radoslaw Lubas - Systematic Trading Lab**
@@ -17,7 +17,7 @@ English videos with English and Polish subtitles.
 
 Historical results, not investment advice. Past performance does not guarantee future results.
 
-Free MT5 tools and my MQL5 profile: <LINK_MQL5>
+Free MT5 tools and my MQL5 profile: https://www.mql5.com/en/users/zanczo
 Contact: <EMAIL>
 ```
 
@@ -31,12 +31,12 @@ Filmy po angielsku, z napisami angielskimi i polskimi.
 
 Wyniki historyczne, nie porada inwestycyjna. Wyniki z przeszłości nie gwarantują przyszłych.
 
-Darmowe narzędzia MT5 i mój profil MQL5: <LINK_MQL5>
+Darmowe narzędzia MT5 i mój profil MQL5: https://www.mql5.com/en/users/zanczo
 Kontakt: <EMAIL>
 ```
 
 ## Linki na kanale
-- MQL5: `<LINK_MQL5>`
+- MQL5: `https://www.mql5.com/en/users/zanczo`
 - Bez quantinvest.co do odwołania (`CLAUDE.md`).
 
 ## Domyślne ustawienia przesyłania
@@ -54,7 +54,7 @@ Tekst domyślnego opisu filmu:
 ```text
 Historical results, not investment advice. Past performance does not guarantee future results.
 
-Free MT5 tools: <LINK_MQL5>
+Free MT5 tools: https://www.mql5.com/en/users/zanczo
 Subtitles: English, Polski.
 ```
 
