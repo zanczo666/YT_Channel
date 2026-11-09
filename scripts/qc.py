@@ -114,11 +114,16 @@ def main() -> None:
     bledne = [l for l in przebieg.splitlines() if BLAD_DEKODOWANIA.search(l) and "Parsed_" not in l]
     if bledne:
         bledy.append(f"błędy dekodowania: {len(bledne)}, np. {bledne[0].strip()[:120]}")
-    czarne = re.findall(r"black_start:([\d.]+) black_end:([\d.]+)", przebieg)
+    # intro i plansza są celowo ciemne i ciche: liczy się tylko treść między nimi
+    czarne = [(o, k) for o, k in re.findall(r"black_start:([\d.]+) black_end:([\d.]+)", przebieg)
+              if float(k) > w_tresci_od + 0.1 and float(o) < koniec_tresci - 0.1]
     if czarne:
         bledy.append("czarne klatki: " + ", ".join(f"{float(o):.1f}–{float(k):.1f} s" for o, k in czarne[:5]))
-    cisze = [float(x) for x in re.findall(r"silence_start: ([\d.]+)", przebieg)]
-    w_tresci = [c for c in cisze if c < koniec_tresci - 0.5]
+    cisze = re.findall(r"silence_start: ([\d.]+)|silence_end: ([\d.]+)", przebieg)
+    poczatki = [float(p) for p, _ in cisze if p]
+    konce = [float(k) for _, k in cisze if k] + [dlugosc] * len(poczatki)
+    # cisza w intro jest celowa; liczy się ta, która trwa jeszcze po jego końcu
+    w_tresci = [p for p, k in zip(poczatki, konce) if k > w_tresci_od + CISZA_MAX_S and p < koniec_tresci - 0.5]
     if w_tresci:
         uwagi.append("cisza ponad " + f"{CISZA_MAX_S:.0f} s od: " + ", ".join(f"{c:.1f} s" for c in w_tresci[:5]))
     podsumowanie = przebieg[przebieg.rfind("Summary:"):]

@@ -393,8 +393,10 @@ def job(a: argparse.Namespace) -> None:
     udalo_sie = False
     try:
         czekaj_na_gotowosc(host)
-        ssh(host, "mkdir -p /root/scripts")
+        ssh(host, "mkdir -p /root/scripts /root/assets/brand")
         rsync_do(host, f"{repo}/", f"root@{host}:/root/scripts/")
+        # logo, belki i dźwięk identyfikacji: skrypty szukają ich w ../assets/brand względem siebie
+        rsync_do(host, f"{repo.parent / 'assets' / 'brand'}/", f"root@{host}:/root/assets/brand/")
         for f in filmy:
             nazwa = Path(f[1]).stem
             katalog = f"/root/praca/{nazwa}"

@@ -94,7 +94,8 @@ def plan_z_scenariusza(script: Path, cut: dict) -> list[dict]:
     plany: list[dict] = []
     for odcinek in cut["os_czasu"]:
         polecenie = polecenia.get(odcinek["id"], "")
-        if polecenie in ("", "—", "-", "TWARZ", "PLANSZA KOŃCOWA"):     # planszę dokleja finish.py
+        # planszę dokleja finish.py, a „TWARZ: AKCENT” to najazd kamery z cut.py, nie grafika
+        if polecenie in ("", "—", "-", "PLANSZA KOŃCOWA") or polecenie.upper().startswith("TWARZ"):
             continue
         rodzaj, _, co = polecenie.partition(":")
         wpis = {"rodzaj": rodzaj.strip().upper(), "co": co.strip() or rodzaj.strip(),
