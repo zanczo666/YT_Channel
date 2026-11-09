@@ -93,13 +93,16 @@ def main() -> None:
         uwagi.append(f"długość {dlugosc / 60:.1f} min, plan na pierwsze filmy to 6–10 min")
 
     final = a.work / "final.json"
-    plansza = json.loads(final.read_text(encoding="utf-8"))["plansza_s"] if final.is_file() else 0.0
+    zakonczenie = json.loads(final.read_text(encoding="utf-8")) if final.is_file() else {}
+    plansza, intro = zakonczenie.get("plansza_s", 0.0), zakonczenie.get("intro_s", 0.0)
     koniec_tresci = dlugosc - plansza
+    w_tresci_od = intro
     cut_path = a.work / "cut.json"
     if cut_path.is_file():
         plan = json.loads(cut_path.read_text(encoding="utf-8"))["dlugosc_s"]
-        if abs(plan - koniec_tresci) > ROZJAZD_OSI:
-            bledy.append(f"oś czasu {plan:.2f} s, a treść w pliku {koniec_tresci:.2f} s: napisy się rozjadą")
+        if abs(plan - (koniec_tresci - w_tresci_od)) > ROZJAZD_OSI:
+            bledy.append(f"oś czasu {plan:.2f} s, a treść w pliku {koniec_tresci - w_tresci_od:.2f} s: "
+                         "napisy się rozjadą")
     else:
         uwagi.append("brak cut.json, nie sprawdzam osi czasu")
 

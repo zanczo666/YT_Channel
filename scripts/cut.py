@@ -35,6 +35,9 @@ SZEROKOSC_DRAFT = 540
 PRZYBLIZENIE = 1.07
 # Kadr przy przybliżeniu ucinamy bardziej od dołu niż od góry — oczy mają zostać w górnej tercji.
 KADR_GORA = 0.35
+# Najazd na akcencie (C6): z kadru pełnego do NAJAZD w trakcie zdania. Zoompan na obrazie powiększonym 2×,
+# bo w natywnej rozdzielczości zaokrąglenia dają drżenie kadru.
+NAJAZD = 1.08
 PRZENIKANIE_DZWIEKU = 0.02   # 20 ms wygaszenia na stykach — kasuje trzask, a nie słychać go jako fade
 
 
@@ -67,7 +70,12 @@ def renderuj_odcinek(zrodlo: Path, o: dict, cel: Path, fps: int, draft: bool, me
     kodowaniu i tak dostajemy cięcie dokładne co do klatki."""
     dlugosc = o["koniec"] - o["start"]
     filtry = [f"fps={fps}"]
-    if przyblizenie > 1.0:
+    if o.get("akcent"):
+        klatek = max(1, round(dlugosc * fps))
+        filtry += [f"scale=iw*2:ih*2:flags=lanczos",
+                   f"zoompan=z='1+{NAJAZD - 1}*on/{klatek}':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)*{KADR_GORA}'"
+                   f":d=1:s={o['_rozmiar']}:fps={fps}"]
+    elif przyblizenie > 1.0:
         # przybliżamy i wracamy do tego samego kadru — w montażu wszystkie odcinki mają jeden rozmiar
         filtry.append(f"scale=ceil(iw*{przyblizenie}/2)*2:ceil(ih*{przyblizenie}/2)*2")
         filtry.append(f"crop=iw/{przyblizenie}:ih/{przyblizenie}:(iw-ow)/2:(ih-oh)*{KADR_GORA}")
@@ -157,9 +165,12 @@ def main() -> None:
     shutil.rmtree(czesci, ignore_errors=True)
     czesci.mkdir(parents=True)
     pliki = []
+    rozmiar = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
+                              "-of", "csv=p=0:s=x", str(zrodlo)], capture_output=True, text=True).stdout.strip()
     for i, o in enumerate(odcinki):
         cel = czesci / f"{i:03d}-{o['id']}.mp4"
         # co drugi odcinek bliżej — sąsiadujące ujęcia nigdy nie mają tego samego kadru
+        o["_rozmiar"] = rozmiar
         renderuj_odcinek(zrodlo, o, cel, a.fps, a.draft, a.mem_max,
                          a.przyblizenie if i % 2 else 1.0)
         pliki.append(cel)

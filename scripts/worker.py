@@ -8,7 +8,11 @@ wstaje na czas zadania i znika.
 Polecenia:
     worker.py up                      postaw maszynę (łańcuch fallbacku G3a) i poczekaj na SSH
     worker.py job --work <kat> --script <plik> --video <plik>
-                                      pełny cykl: postaw → wyślij → C1–C9 → zabierz wynik → skasuj
+                                      pełny cykl: postaw → wyślij → C1–C12 → zabierz wynik → skasuj
+    worker.py job --work <kat> --film <wideo> <scenariusz> [dane] --film …
+                                      kilka filmów z jednej sesji nagraniowej w jednym uruchomieniu (B4)
+    worker.py snapshot build|list|promote <id>|prune
+                                      G3b: obraz z gotowym środowiskiem, budowany skryptem z repo
     worker.py down                    skasuj maszynę
     worker.py reap [--older-than 1]   watchdog G7: kasuje workery starsze niż N godzin
 
@@ -45,13 +49,31 @@ OBRAZ = "ubuntu-24.04"          # ta sama wersja co claudecore — debugujemy lo
 LANCUCH = [("ccx33", "hel1"), ("ccx33", "fsn1"), ("ccx33", "nbg1"),
            ("cpx42", "hel1"), ("cx43", "hel1")]
 
-CLOUD_INIT = """#cloud-config
+# G3c: wszystko, czego potrzebują kroki montażu i miniatur. Wersje pip są przypięte w `config/requirements-*.txt`,
+# osobno dla każdego venv (pierwsza budowa bez plików zapisuje `pip freeze`, który od tej pory jest wzorcem).
+PAKIETY = ["ffmpeg", "python3-venv", "python3-pip", "python3-pil", "fonts-urw-base35", "rsync", "tesseract-ocr"]
+KONFIG = Path(__file__).resolve().parent.parent / "config"
+WYMAGANIA = {"whisper": KONFIG / "requirements-whisper.txt", "narzedzia": KONFIG / "requirements-narzedzia.txt"}
+BEZ_PRZYPIEC = {"whisper": "faster-whisper numpy",
+                "narzedzia": "pillow numpy opencv-contrib-python-headless pytesseract playwright rembg onnxruntime"}
+MODEL_WHISPER = "large-v3"
+ZNACZNIK = "/var/lib/yt-worker-gotowy"
+
+CLOUD_INIT = f"""#cloud-config
 package_update: true
-packages: [ffmpeg, python3-venv, python3-pip, python3-pil, fonts-urw-base35, rsync]
+packages: [{", ".join(PAKIETY)}]
 runcmd:
   - [bash, -lc, "python3 -m venv /opt/whisper && /opt/whisper/bin/pip install -q faster-whisper numpy"]
-  - [bash, -lc, "touch /var/lib/yt-worker-gotowy"]
+  - [bash, -lc, "touch {ZNACZNIK}"]
 """
+# maszyna ze snapshotu ma już wszystko i znacznik gotowości; cloud-init nie robi nic
+CLOUD_INIT_SNAPSHOT = "#cloud-config\n"
+
+# Snapshot budujemy na najmniejszej maszynie: obraz da się postawić tylko na dysku co najmniej tak dużym
+# jak źródłowy, a cały łańcuch fallbacku musi z niego korzystać.
+BUDOWA = [("cx23", "hel1"), ("cpx22", "hel1"), ("cx33", "hel1"), ("cx23", "fsn1"), ("cpx22", "fsn1")]
+ETYKIETA_OBRAZU = "yt-worker-obraz"
+ZOSTAW_OBRAZOW = 2
 
 
 PLIK_JOBA = Path.home() / ".local" / "state" / "yt_channel" / "worker-job.pid"
@@ -146,19 +168,43 @@ def czekaj_na_gotowosc(host: str, minuty: int = 12) -> None:
              f"ssh -i {KLUCZ} root@{host} 'cloud-init status --long'")
 
 
-def postaw() -> dict:
+def obrazy() -> list[dict]:
+    """Nasze snapshoty, od najnowszego."""
+    lista = api(f"/images?type=snapshot&label_selector=role={ETYKIETA_OBRAZU}")["images"]
+    return sorted(lista, key=lambda i: i["created"], reverse=True)
+
+
+def obraz_do_startu(wybor: str) -> tuple[str | int, str]:
+    """`produkcja` (domyślnie), `kandydat` (test nowego obrazu), `czysty` (Ubuntu + cloud-init) albo ID."""
+    if wybor == "czysty":
+        return OBRAZ, CLOUD_INIT
+    if wybor.isdigit():
+        return int(wybor), CLOUD_INIT_SNAPSHOT
+    pasujace = [i for i in obrazy() if i["labels"].get("status") == wybor]
+    if pasujace:
+        print(f"obraz: snapshot {pasujace[0]['id']} ({wybor}, {pasujace[0]['description']})")
+        return pasujace[0]["id"], CLOUD_INIT_SNAPSHOT
+    if wybor == "kandydat":
+        sys.exit("błąd: nie ma snapshotu-kandydata; zbuduj go: worker.py snapshot build")
+    print("obraz: brak snapshotu produkcyjnego, stawiam czyste Ubuntu z instalacją (~6 min dłużej)")
+    return OBRAZ, CLOUD_INIT
+
+
+def postaw(obraz: str = "produkcja", lancuch: list[tuple[str, str]] | None = None,
+           etykiety: dict | None = None) -> dict:
     """Łańcuch fallbacku G3a: pierwszy typ i lokalizacja, które są dostępne."""
     if znajdz():
         sys.exit("błąd: worker już istnieje — użyj `worker.py down` albo poczekaj na koniec zadania")
     klucz_id = zapewnij_klucz()
+    obraz_id, user_data = obraz_do_startu(obraz)
     bledy = []
-    for typ, lokalizacja in LANCUCH:
+    for typ, lokalizacja in lancuch or LANCUCH:
         try:
             print(f"próbuję {typ} @ {lokalizacja}…")
             odp = api("/servers", "POST", {
                 "name": f"{NAZWA}-{int(time.time())}", "server_type": typ, "location": lokalizacja,
-                "image": OBRAZ, "ssh_keys": [klucz_id], "labels": ETYKIETY,
-                "user_data": CLOUD_INIT, "start_after_create": True,
+                "image": obraz_id, "ssh_keys": [klucz_id], "labels": etykiety or ETYKIETY,
+                "user_data": user_data, "start_after_create": True,
                 "public_net": {"enable_ipv4": True, "enable_ipv6": True},
             })
             serwer = odp["server"]
@@ -176,6 +222,94 @@ def skasuj(serwer: dict | None = None) -> None:
         return
     api(f"/servers/{serwer['id']}", "DELETE")
     print(f"skasowany: {serwer['name']}")
+
+
+def czekaj_na_akcje(akcja: dict, minuty: int = 40) -> None:
+    koniec = time.time() + minuty * 60
+    while time.time() < koniec:
+        stan = api(f"/actions/{akcja['id']}")["action"]
+        if stan["status"] == "success":
+            return
+        if stan["status"] == "error":
+            raise RuntimeError(f"akcja {akcja['command']}: {stan.get('error')}")
+        time.sleep(15)
+    raise RuntimeError(f"akcja {akcja['command']} trwa ponad {minuty} min")
+
+
+def rsync_do(host: str, zrodlo: str, cel: str, *opcje: str) -> None:
+    subprocess.run(["rsync", "-az", *opcje, "-e", f"ssh -i {KLUCZ} -o StrictHostKeyChecking=no "
+                    f"-o UserKnownHostsFile=/dev/null -o LogLevel=ERROR", zrodlo, cel], check=True)
+
+
+def snapshot_build() -> None:
+    """G3b: czysta maszyna → instalacja z przypiętych wersji → snapshot-kandydat → skasowanie maszyny."""
+    PLIK_JOBA.parent.mkdir(parents=True, exist_ok=True)
+    PLIK_JOBA.write_text(str(os.getpid()))      # watchdog nie może skasować maszyny w trakcie budowy
+    serwer = postaw("czysty", BUDOWA)
+    host = adres(serwer)
+    try:
+        czekaj_na_gotowosc(host, minuty=20)
+        ssh(host, "python3 -m venv /opt/narzedzia")
+        pip = []
+        for venv, plik in WYMAGANIA.items():
+            if plik.is_file():
+                rsync_do(host, str(plik), f"root@{host}:/root/{plik.name}")
+                pip.append(f"/opt/{venv}/bin/pip install -q -r /root/{plik.name}")
+            else:
+                pip.append(f"/opt/{venv}/bin/pip install -q {BEZ_PRZYPIEC[venv]}")
+        instalacja = [
+            # dwa venv: whisper ma własne zależności (ctranslate2), których nie mieszamy z narzędziami miniatur
+            *pip,
+            # samo pobranie wag: załadowanie large-v3 na maszynie budującej (4 GB RAM) kończyło się brakiem pamięci
+            f"/opt/whisper/bin/python -c \"from faster_whisper.utils import download_model; "
+            f"print(download_model('{MODEL_WHISPER}'))\"",
+            "/opt/narzedzia/bin/playwright install --with-deps chromium",
+            # model, którego używa face_cutout.py; domyślny rembg zmienia się między wersjami
+            "/opt/narzedzia/bin/python -c 'import rembg; rembg.new_session(\"u2net_human_seg\")'",
+            "/opt/whisper/bin/pip freeze > /root/wersje-whisper.txt && "
+            "/opt/narzedzia/bin/pip freeze > /root/wersje-narzedzia.txt",
+            "(ffmpeg -version | head -1; tesseract --version 2>&1 | head -1; lsb_release -ds) > /root/wersje-system.txt",
+            "cloud-init clean --logs && rm -rf /root/.cache/pip /var/cache/apt/archives/*.deb",
+        ]
+        for polecenie in instalacja:
+            print(f"\n── {polecenie[:90]} ──")
+            # pobieranie z GitHuba i Hugging Face potrafi chwilowo zwrócić 504: trzy podejścia z przerwą
+            if ssh(host, f"for i in 1 2 3; do ( {polecenie} ) && exit 0; sleep 30; done; exit 1").returncode != 0:
+                raise RuntimeError(f"instalacja nie powiodła się: {polecenie[:90]}")
+        KONFIG.mkdir(exist_ok=True)
+        rsync_do(host, f"root@{host}:/root/wersje-system.txt", str(KONFIG / "wersje-systemu-workera.txt"))
+        for venv, plik in WYMAGANIA.items():
+            if not plik.is_file():
+                rsync_do(host, f"root@{host}:/root/wersje-{venv}.txt", str(plik))
+                print(f"zapisano przypięte wersje: {plik} (zacommituj)")
+        ssh(host, "sync")
+        akcja = api(f"/servers/{serwer['id']}/actions/create_image", "POST", {
+            "type": "snapshot", "description": f"yt-worker {datetime.now():%Y-%m-%d %H:%M}",
+            "labels": {"role": ETYKIETA_OBRAZU, "status": "kandydat"}})
+        print("tworzę snapshot…")
+        czekaj_na_akcje(akcja["action"])
+        print(f"OK: snapshot {akcja['image']['id']} jako kandydat; przetestuj: "
+              f"worker.py job --obraz kandydat …, potem worker.py snapshot promote {akcja['image']['id']}")
+    finally:
+        PLIK_JOBA.unlink(missing_ok=True)
+        skasuj(serwer)
+
+
+def snapshot_promote(obraz_id: int) -> None:
+    """Kandydat po teście na filmie staje się produkcyjnym; poprzedni produkcyjny zostaje jako zapasowy."""
+    for i in obrazy():
+        if i["labels"].get("status") == "produkcja":
+            api(f"/images/{i['id']}", "PUT", {"labels": {"role": ETYKIETA_OBRAZU, "status": "poprzedni"}})
+    api(f"/images/{obraz_id}", "PUT", {"labels": {"role": ETYKIETA_OBRAZU, "status": "produkcja"}})
+    print(f"OK: snapshot {obraz_id} jest produkcyjny")
+
+
+def snapshot_prune() -> None:
+    """Snapshot kosztuje co miesiąc: zostaje produkcyjny, kandydat i najwyżej jeden poprzedni."""
+    poprzednie = [i for i in obrazy() if i["labels"].get("status") == "poprzedni"]
+    for i in poprzednie[ZOSTAW_OBRAZOW - 1:]:
+        api(f"/images/{i['id']}", "DELETE")
+        print(f"usunięty snapshot {i['id']} ({i['description']})")
 
 
 def job_dziala() -> bool:
@@ -208,68 +342,88 @@ def reap(godziny: float) -> None:
         print(f"watchdog: skasowano {ilu}")
 
 
+def kroki_filmu(a: argparse.Namespace, katalog: str, video: str, scen: str, dane: str | None,
+                belka: bool) -> list[tuple[str, str]]:
+    w = f"{katalog}/work"
+    return [
+        ("C1 ingest",    f"python3 /root/scripts/ingest.py --in {video} --work {w} --normalize"),
+        ("C2 transkrypcja", f"/opt/whisper/bin/python /root/scripts/transcribe.py "
+                            f"--work {w} --model {a.model} --threads 8"),
+        ("C3 dopasowanie", f"python3 /root/scripts/align.py --work {w} --script {scen}"),
+        ("C4 montaż",     f"python3 /root/scripts/cut.py --work {w} --video {video} --mem-max 0"),
+        ("C5 dźwięk",     f"python3 /root/scripts/audio_master.py --work {w} --mem-max 0"),
+        # podgląd powstaje zawsze: bez niego nie ma czego zatwierdzić przed wyborem --kolor
+        ("C6 podgląd",    f"python3 /root/scripts/grade.py --work {w} --podglad --mem-max 0"),
+        *([("C6 kolor",   f"python3 /root/scripts/grade.py --work {w} --styl {a.kolor} --mem-max 0")]
+          if a.kolor else []),
+        *([("C7 grafiki", f"python3 /root/scripts/graphics.py --work {w} "
+                          f"--in {'kolor.mp4' if a.kolor else 'master.mp4'} --script {scen} --mem-max 0"
+                          + (f" --dane {dane}" if dane else ""))]
+          if dane or belka else []),
+        ("C8 napisy",     f"python3 /root/scripts/subtitles.py --work {w} --script {scen}"),
+        ("C9 rozdziały",  f"python3 /root/scripts/chapters.py --work {w} --script {scen}"),
+        ("C11 render",    f"python3 /root/scripts/finish.py --work {w} --mem-max 0"
+                          + (" --intro" if a.intro else "")),
+        ("C12 kontrola",  f"python3 /root/scripts/qc.py --work {w} --mem-max 0"),
+    ]
+
+
+LEKKIE = ["--include=*/", "--include=*.json", "--include=*.md", "--include=*.txt", "--include=*.srt",
+          "--include=*.jpg", "--include=*.edl", "--exclude=*"]
+
+
 def job(a: argparse.Namespace) -> None:
-    """Pełny cykl: postaw → wyślij → C1–C5 → zabierz wynik → skasuj."""
+    """Pełny cykl: postaw → wyślij → C1–C12 dla każdego filmu → zabierz wynik → skasuj."""
+    filmy = [tuple(f) for f in (a.film or [])]
+    if a.video or a.script:
+        if not (a.video and a.script):
+            sys.exit("błąd: --video i --script podaje się razem")
+        filmy.insert(0, (str(a.video), str(a.script), *([str(a.dane)] if a.dane else [])))
+    if not filmy:
+        sys.exit("błąd: podaj --video i --script albo co najmniej jedno --film WIDEO SCENARIUSZ [DANE]")
+    for f in filmy:
+        if not 2 <= len(f) <= 3 or not all(Path(x).is_file() for x in f):
+            sys.exit(f"błąd: --film wymaga istniejących plików WIDEO SCENARIUSZ [DANE]: {f}")
+
     repo = Path(__file__).resolve().parent
     PLIK_JOBA.parent.mkdir(parents=True, exist_ok=True)
     PLIK_JOBA.write_text(str(os.getpid()))
-    serwer = postaw()
+    serwer = postaw(a.obraz)
     host = adres(serwer)
     udalo_sie = False
     try:
         czekaj_na_gotowosc(host)
-        # work/ zakłada dopiero C1, ale `tee` loguje od pierwszego kroku — katalog musi już być
-        ssh(host, "mkdir -p /root/praca/work /root/scripts")
-        subprocess.run(["rsync", "-az", "-e", f"ssh -i {KLUCZ} -o StrictHostKeyChecking=no "
-                                              f"-o UserKnownHostsFile=/dev/null -o LogLevel=ERROR",
-                        f"{repo}/", f"root@{host}:/root/scripts/"], check=True)
-        for plik in [x for x in (a.video, a.script, a.dane) if x]:
-            subprocess.run(["rsync", "-az", "--progress", "-e", f"ssh -i {KLUCZ} "
-                            f"-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR",
-                            str(plik), f"root@{host}:/root/praca/"], check=True)
-
-        belka = "BELKA:" in Path(a.script).read_text(encoding="utf-8")
-        video = f"/root/praca/{Path(a.video).name}"
-        scen = f"/root/praca/{Path(a.script).name}"
-        kroki = [
-            ("C1 ingest",    f"python3 /root/scripts/ingest.py --in {video} --work /root/praca/work --normalize"),
-            ("C2 transkrypcja", f"/opt/whisper/bin/python /root/scripts/transcribe.py "
-                                f"--work /root/praca/work --model {a.model} --threads 8"),
-            ("C3 dopasowanie", f"python3 /root/scripts/align.py --work /root/praca/work --script {scen}"),
-            ("C4 montaż",     f"python3 /root/scripts/cut.py --work /root/praca/work --video {video} --mem-max 0"),
-            ("C5 dźwięk",     f"python3 /root/scripts/audio_master.py --work /root/praca/work --mem-max 0"),
-            # podgląd powstaje zawsze: bez niego nie ma czego zatwierdzić przed wyborem --kolor
-            ("C6 podgląd",    f"python3 /root/scripts/grade.py --work /root/praca/work --podglad --mem-max 0"),
-            *([("C6 kolor",   f"python3 /root/scripts/grade.py --work /root/praca/work --styl {a.kolor} --mem-max 0")]
-              if a.kolor else []),
-            *([("C7 grafiki", f"python3 /root/scripts/graphics.py --work /root/praca/work "
-                              f"--in {'kolor.mp4' if a.kolor else 'master.mp4'} "
-                              f"--script {scen} --mem-max 0"
-                              + (f" --dane /root/praca/{Path(a.dane).name}" if a.dane else ""))]
-              if a.dane or belka else []),
-            ("C8 napisy",     f"python3 /root/scripts/subtitles.py --work /root/praca/work --script {scen}"),
-            ("C9 rozdziały",  f"python3 /root/scripts/chapters.py --work /root/praca/work --script {scen}"),
-            ("C11 render",    f"python3 /root/scripts/finish.py --work /root/praca/work --mem-max 0"),
-            ("C12 kontrola",  f"python3 /root/scripts/qc.py --work /root/praca/work --mem-max 0"),
-        ]
-        for nazwa, polecenie in kroki:
-            print(f"\n── {nazwa} ──")
-            if ssh(host, f"cd /root/praca && {polecenie} 2>&1 | tee -a /root/praca/work/log.txt").returncode != 0:
-                raise RuntimeError(f"{nazwa} nie powiodło się")
-
-        # G8: wynik i logi ściągamy zanim maszyna zniknie
-        a.work.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["rsync", "-az", "-e", f"ssh -i {KLUCZ} -o StrictHostKeyChecking=no "
-                        f"-o UserKnownHostsFile=/dev/null -o LogLevel=ERROR",
-                        f"root@{host}:/root/praca/work/", f"{a.work}/"], check=True)
+        ssh(host, "mkdir -p /root/scripts")
+        rsync_do(host, f"{repo}/", f"root@{host}:/root/scripts/")
+        for f in filmy:
+            nazwa = Path(f[1]).stem
+            katalog = f"/root/praca/{nazwa}"
+            # work/ zakłada dopiero C1, ale `tee` loguje od pierwszego kroku — katalog musi już być
+            ssh(host, f"mkdir -p {katalog}/work")
+            for plik in f:
+                rsync_do(host, plik, f"root@{host}:{katalog}/", "--progress")
+            cel = a.work / nazwa if len(filmy) > 1 else a.work
+            cel.mkdir(parents=True, exist_ok=True)
+            belka = "BELKA:" in Path(f[1]).read_text(encoding="utf-8")
+            dane = f"{katalog}/{Path(f[2]).name}" if len(f) > 2 else None
+            for etap, polecenie in kroki_filmu(a, katalog, f"{katalog}/{Path(f[0]).name}",
+                                               f"{katalog}/{Path(f[1]).name}", dane, belka):
+                print(f"\n── {nazwa}: {etap} ──")
+                wynik = ssh(host, f"cd {katalog} && {polecenie} 2>&1 | tee -a {katalog}/work/log.txt; "
+                                  f"exit ${{PIPESTATUS[0]}}")
+                # G8: log i lekkie wyniki po każdym kroku, żeby przy awarii nie zniknęły z maszyną
+                rsync_do(host, f"root@{host}:{katalog}/work/", f"{cel}/", *LEKKIE)
+                if wynik.returncode != 0:
+                    raise RuntimeError(f"{nazwa}: {etap} nie powiodło się")
+            rsync_do(host, f"root@{host}:{katalog}/work/", f"{cel}/")
+            print(f"\nOK: {nazwa} → {cel}")
         udalo_sie = True
-        print(f"\nOK: wynik w {a.work}")
     finally:
         PLIK_JOBA.unlink(missing_ok=True)
         if udalo_sie or not a.keep_on_error:
             skasuj(serwer)
         else:
-            print(f"\nmaszyna ZOSTAJE do diagnozy (godzina i tak opłacona): "
+            print(f"\nmaszyna ZOSTAJE do diagnozy (watchdog skasuje ją po 58 min): "
                   f"ssh -i {KLUCZ} root@{host}\nskasuj: python3 scripts/worker.py down")
 
 
@@ -280,10 +434,17 @@ def main() -> None:
     pod.add_parser("down", help="skasuj maszynę")
     p_reap = pod.add_parser("reap", help="watchdog kosztów")
     p_reap.add_argument("--older-than", type=float, default=1.0, help="wiek w godzinach")
-    p_job = pod.add_parser("job", help="pełny cykl C1–C5")
+    p_snap = pod.add_parser("snapshot", help="G3b: obraz środowiska")
+    p_snap.add_argument("akcja", choices=["build", "list", "promote", "prune"])
+    p_snap.add_argument("id", nargs="?", type=int)
+    p_job = pod.add_parser("job", help="pełny cykl C1–C12")
     p_job.add_argument("--work", required=True, type=Path, help="katalog na wynik (lokalnie)")
-    p_job.add_argument("--video", required=True, type=Path)
-    p_job.add_argument("--script", required=True, type=Path)
+    p_job.add_argument("--video", type=Path)
+    p_job.add_argument("--script", type=Path)
+    p_job.add_argument("--film", nargs="+", action="append", metavar="PLIK",
+                       help="WIDEO SCENARIUSZ [DANE]; można powtórzyć dla kilku filmów")
+    p_job.add_argument("--obraz", default="produkcja", help="produkcja | kandydat | czysty | ID snapshotu")
+    p_job.add_argument("--intro", action="store_true", help="3 s identyfikacji marki na początku")
     p_job.add_argument("--dane", type=Path, help="JSON z danymi do grafik (C7); bez niego krok pomijamy")
     p_job.add_argument("--kolor", choices=["czysty", "kinowy", "pastelowy"],
                        help="styl C6 zatwierdzony na podglądzie; bez niego powstaje tylko kolor-podglad.jpg")
@@ -292,13 +453,26 @@ def main() -> None:
     a = ap.parse_args()
 
     if a.cmd == "up":
-        serwer = postaw()
+        serwer = postaw(os.environ.get("YT_OBRAZ", "produkcja"))
         czekaj_na_gotowosc(adres(serwer))
         print(f"gotowe: ssh -i {KLUCZ} root@{adres(serwer)}")
     elif a.cmd == "down":
         skasuj()
     elif a.cmd == "reap":
         reap(a.older_than)
+    elif a.cmd == "snapshot":
+        if a.akcja == "build":
+            snapshot_build()
+        elif a.akcja == "promote":
+            if not a.id:
+                sys.exit("błąd: podaj ID snapshotu")
+            snapshot_promote(a.id)
+        elif a.akcja == "prune":
+            snapshot_prune()
+        else:
+            for i in obrazy():
+                print(f"{i['id']}  {i['labels'].get('status', '?'):10}  {i['image_size'] or 0:.1f} GB  "
+                      f"{i['description']}")
     else:
         job(a)
 

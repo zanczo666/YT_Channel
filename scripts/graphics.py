@@ -299,6 +299,34 @@ def renderuj(dane: dict, cel: Path) -> None:
     obraz.save(cel)
 
 
+LOGO = Path(__file__).resolve().parent.parent / "assets" / "brand" / "znak-wodny.png"
+
+
+def wklej_logo(obraz: Image.Image, x: int, y: int, rozmiar: int) -> int:
+    """Logo z brand kitu (F6); zwraca szerokość, jaką zajęło (0, gdy pliku nie ma)."""
+    if not LOGO.is_file():
+        return 0
+    logo = Image.open(LOGO).convert("RGBA").resize((rozmiar, rozmiar), Image.LANCZOS)
+    obraz.alpha_composite(logo, (int(x), int(y)))
+    return rozmiar
+
+
+def renderuj_belke_imie(cel: Path) -> None:
+    """Dolna belka przedstawiająca prowadzącego: logo, imię i nazwisko, nazwa kanału."""
+    obraz = Image.new("RGBA", (SZEROKOSC, WYSOKOSC), (0, 0, 0, 0))
+    rysuj = ImageDraw.Draw(obraz)
+    f1, f2 = font(FONT_BOLD, sk(46)), font(FONT_ZWYKLY, sk(30))
+    wys = sk(124)
+    x0, y0 = MARGINES, WYSOKOSC - sk(330)
+    szer = max(rysuj.textlength(NAZWA_NA_BELCE.upper(), font=f1), rysuj.textlength("SYSTEMATIC TRADING LAB", font=f2))
+    rysuj.rounded_rectangle([x0, y0, x0 + wys + sk(30) + szer + sk(36), y0 + wys], radius=sk(16), fill=(*BG, 230))
+    wklej_logo(obraz, x0 + sk(14), y0 + sk(14), wys - sk(28))
+    tx = x0 + wys + sk(14)
+    rysuj.text((tx, y0 + sk(22)), NAZWA_NA_BELCE.upper(), font=f1, fill=TEXT)
+    rysuj.text((tx, y0 + sk(76)), "SYSTEMATIC TRADING LAB", font=f2, fill=AKCENTY["pass"])
+    obraz.save(cel)
+
+
 def renderuj_belke(cel: Path) -> None:
     """Mała belka z lewej, nad strefą napisów i paska odtwarzacza. Przezroczysta — twarz zostaje widoczna."""
     obraz = Image.new("RGBA", (SZEROKOSC, WYSOKOSC), (0, 0, 0, 0))
@@ -309,8 +337,12 @@ def renderuj_belke(cel: Path) -> None:
     szer_przycisku = rysuj.textlength("SUBSCRIBE", font=f_przycisk) + 2 * sk(26)
     x0, y0 = MARGINES, WYSOKOSC - sk(280)
     x1 = x0 + odstep + szer_nazwy + odstep + szer_przycisku + sk(10)
+    logo = (wys - sk(16)) if LOGO.is_file() else 0
+    x1 += logo + (sk(10) if logo else 0)
     rysuj.rounded_rectangle([x0, y0, x1, y0 + wys], radius=sk(14), fill=(*BG, 225))
-    rysuj.text((x0 + odstep, y0 + wys / 2), NAZWA_NA_BELCE, font=f_nazwa, fill=TEXT, anchor="lm")
+    wklej_logo(obraz, x0 + sk(8), y0 + sk(8), logo)
+    rysuj.text((x0 + odstep + logo + (sk(4) if logo else 0), y0 + wys / 2), NAZWA_NA_BELCE, font=f_nazwa,
+               fill=TEXT, anchor="lm")
     px0 = x1 - sk(10) - szer_przycisku
     rysuj.rounded_rectangle([px0, y0 + sk(10), x1 - sk(10), y0 + wys - sk(10)], radius=sk(10), fill=CZERWIEN_SUBSKRYPCJI)
     rysuj.text(((px0 + x1 - sk(10)) / 2, y0 + wys / 2), "SUBSCRIBE", font=f_przycisk, fill=TEXT, anchor="mm")
@@ -380,7 +412,7 @@ def main() -> None:
     for i, p in enumerate(plany):
         if p["rodzaj"] == "BELKA":
             plik = katalog / f"{i:02d}-belka.png"
-            renderuj_belke(plik)
+            (renderuj_belke_imie if p["co"].lower().startswith("imi") else renderuj_belke)(plik)
             p["plik"] = str(plik); gotowe.append(p); continue
         opis = next((dane[k] for k in (*p["zdania"], p["co"]) if k in dane), None)
         if p["rodzaj"] == "EKRAN" and isinstance(opis, str):      # gotowy zrzut albo nagranie ekranu

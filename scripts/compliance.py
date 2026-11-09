@@ -104,7 +104,7 @@ def sprawdz_scenariusz(sciezka: Path, bledy: list[str], uwagi: list[str]) -> Non
     elif pierwsze_cta < CTA_NAJWCZESNIEJ_S:
         bledy.append(f"{zdanie_cta}: CTA około {pierwsze_cta:.0f} s, najwcześniej po {CTA_NAJWCZESNIEJ_S} s")
 
-    belki = [w for w in wiersze if w[3].upper().startswith("BELKA")]
+    belki = [w for w in wiersze if re.match(r"BELKA:\s*subscribe", w[3], re.I)]
     if len(belki) > 1:
         bledy.append("belka subskrypcji więcej niż raz: " + ", ".join(w[0] for w in belki))
     elif not belki:

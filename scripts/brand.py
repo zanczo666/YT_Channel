@@ -10,6 +10,7 @@ i przezroczystość. Wszystko rysujemy w czterokrotnej rozdzielczości, bo Pillo
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 from pathlib import Path
 
@@ -97,6 +98,17 @@ def baner(cel: Path) -> None:
     obraz.save(cel)
 
 
+def ident(cel: Path) -> None:
+    """Dźwięk identyfikacji (F6): dwa miękkie tony w kwincie, cicho — ma zaznaczyć markę, nie budzić."""
+    subprocess.run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+                    "-f", "lavfi", "-i", "sine=f=523.25:d=1.6", "-f", "lavfi", "-i", "sine=f=783.99:d=1.3",
+                    "-filter_complex", "[0]afade=t=in:d=0.04,afade=t=out:st=0.5:d=1.1,volume=0.35[a];"
+                    "[1]adelay=220,afade=t=in:st=0.22:d=0.04,afade=t=out:st=0.8:d=0.8,volume=0.3[b];"
+                    "[a][b]amix=inputs=2:normalize=0,aecho=0.6:0.5:180:0.25,loudnorm=I=-20:TP=-3,"
+                    "apad=whole_dur=3,aresample=48000",
+                    "-ac", "2", str(cel)], check=True)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="F2 — awatar, baner, znak wodny")
     ap.add_argument("--out", type=Path, default=Path("assets/brand"))
@@ -105,6 +117,7 @@ def main() -> None:
     znak(800).convert("RGB").save(a.out / "awatar.png")
     baner(a.out / "baner.png")
     znak(150, tlo=False).save(a.out / "znak-wodny.png")
+    ident(a.out / "ident.wav")
     print(f"OK: {a.out}/awatar.png, baner.png, znak-wodny.png")
 
 

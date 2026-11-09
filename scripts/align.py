@@ -26,6 +26,7 @@ import sys
 from difflib import SequenceMatcher
 from pathlib import Path
 
+WIERSZ_EKRAN = re.compile(r"^\|\s*(L\d{3,})\s*\|[^|]*\|[^|]*\|([^|]*)\|", re.MULTILINE)
 WIERSZ_ID = re.compile(r"^\|\s*(L\d{3,})\s*\|([^|]*)\|", re.MULTILINE)
 NAGLOWEK = re.compile(r"^##\s*\[([^\]]+)\]\s*(.+?)\s*$", re.MULTILINE)
 TOKEN = re.compile(r"[a-z0-9']+")
@@ -236,6 +237,8 @@ def main() -> None:
     # Odcinki do zachowania. Oddech bierzemy z ciszy wokół ujęcia, ale nigdy nie wchodzimy w sąsiednie
     # ujęcie ani za jego połowę drogi — dzięki temu tam, gdzie nagrywałeś zdanie po zdaniu, w montażu
     # zostaje prawdziwa pauza z pokoju, a nie cisza doklejona z innego miejsca taśmy.
+    # „TWARZ: AKCENT” w kolumnie „Na ekranie” = powolny najazd kamery na kluczowym zdaniu (C6, cut.py)
+    ekran = {m[1]: m[2] for m in WIERSZ_EKRAN.finditer(a.script.read_text(encoding="utf-8"))}
     uzyte = [(z, k) for z, k in zip(zdania, wybor) if k]
     zachowaj, pozycje = [], []
     for i, (z, kand) in enumerate(uzyte):
@@ -250,7 +253,8 @@ def main() -> None:
                      kand["koniec"] + a.margines_po)
         if koniec <= start:                       # ujęcia stykają się — tniemy dokładnie na słowie
             start, koniec = kand["start"], kand["koniec"]
-        zachowaj.append({"id": z["id"], "start": round(start, 3), "koniec": round(koniec, 3)})
+        zachowaj.append({"id": z["id"], "start": round(start, 3), "koniec": round(koniec, 3),
+                         **({"akcent": True} if "AKCENT" in ekran.get(z["id"], "").upper() else {})})
         pozycje.append((kand["od"], kand["do"]))
 
     # wszystko poza wybranymi ujęciami idzie do wycięcia; opisujemy, co tam było słychać

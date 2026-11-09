@@ -251,6 +251,16 @@ def embargo_until(content: str, today: _dt.date) -> _dt.date | None:
     return until if until > today else None
 
 
+# A1: pliki danych do grafik (krzywe equity, raporty) obok kart; tylko te rozszerzenia i z limitem rozmiaru.
+DATA_EXT = (".csv", ".json", ".png", ".jpg")
+DATA_MAX_BYTES = 5 * 1024 * 1024
+
+
+def git_bytes(repo: Path, *args: str) -> bytes:
+    res = subprocess.run(["git", "-C", str(repo), *args], capture_output=True)
+    return res.stdout if res.returncode == 0 else b""
+
+
 def sync_export_dir(src: dict, since: str, seen: set[str], today: _dt.date) -> list[str]:
     """N8N_EA_System: lustro folderu `export/yt/` w `context/factory/` (tylko ten folder)."""
     repo, ref, root = src["repo"], src["ref"], src["export_root"].rstrip("/")
@@ -258,7 +268,7 @@ def sync_export_dir(src: dict, since: str, seen: set[str], today: _dt.date) -> l
     upstream: dict[str, str] = {}
     for line in out.splitlines():
         line = line.strip()
-        if not line.startswith(root + "/") or not line.endswith(".md"):
+        if not line.startswith(root + "/") or not line.endswith((".md", *DATA_EXT)):
             continue
         rel = line[len(root) + 1:]
         # Ochrona przed wyjściem poza context/factory/.
@@ -271,6 +281,15 @@ def sync_export_dir(src: dict, since: str, seen: set[str], today: _dt.date) -> l
 
     entries: list[str] = []
     for rel, path in sorted(upstream.items()):
+        if rel.endswith(DATA_EXT):
+            dane = git_bytes(repo, "show", f"{ref}:{path}")
+            dest = FACTORY_DIR / rel
+            if not dane or len(dane) > DATA_MAX_BYTES or (dest.exists() and dest.read_bytes() == dane):
+                continue
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(dane)
+            entries.append(f"- `{rel}` — plik danych")
+            continue
         content = git(repo, "show", f"{ref}:{path}", check=False)
         if not content:
             continue
@@ -287,7 +306,7 @@ def sync_export_dir(src: dict, since: str, seen: set[str], today: _dt.date) -> l
 
     # Karty usunięte w źródle znikają też z lustra.
     if FACTORY_DIR.exists():
-        for local in sorted(FACTORY_DIR.rglob("*.md")):
+        for local in sorted(p for p in FACTORY_DIR.rglob("*") if p.is_file() and p.suffix in (".md", *DATA_EXT)):
             rel = local.relative_to(FACTORY_DIR).as_posix()
             if rel not in upstream:
                 local.unlink()

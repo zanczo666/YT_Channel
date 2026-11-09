@@ -51,7 +51,13 @@ pakujesz gotowy scenariusz tak, żeby film został znaleziony, kliknięty i dobr
    głosem w ostatnich 20 s.
 7. `shorts.md` — 3–5 shortów: fragment scenariusza (sekcja), hak w 1. sekundzie, tytuł shorta, link do filmu.
 8. `checklist.md` — checklista §10 standardu z zaznaczonym stanem; osobno lista rzeczy do zrobienia ręcznie
-   (napisy .srt, wgranie, playlista, Test & Compare).
+   w Studio (plansza końcowa, karty, przypięty komentarz, Test & Compare). Napisy, wgranie i playlistę robi automat.
+9. `metadata.json` — dla automatu wgrywającego (`scripts/upload.py`), dokładnie w tym formacie:
+   `{"title": "<faworyt>", "description_file": "description.txt", "tags_file": "tags.txt",
+   "thumbnail": "<plik faworyta>", "pl": {"title": "<tytuł PL>", "description": "<opis PL, ten sam układ>"}}`.
+10. `shorts.json` — dla automatu shorts (`scripts/shorts.py`): lista 3–5 obiektów
+   `{"od": "L010", "do": "L014", "tytul": "<tytuł shorta EN, ≤ 60 znaków>", "opis": "<1–2 zdania EN>"}`.
+   Zakres ID ma trwać 20–55 s (~145 słów/min), zaczynać się od zdania-haka i kończyć domkniętą myślą.
 
 ## Kontrola przed oddaniem
 - `grep -inE "only|secret|\bai\b|ai-powered|100%|holy grail|guaranteed|we sell|i sell|buy my|our product|discount"`

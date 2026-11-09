@@ -9,7 +9,9 @@
 > - wzorcem do montażu (nagranie dopasowywane do ID zdań; zostaje ostatnie czyste ujęcie każdego zdania).
 >
 > EN: język mówiony — krótkie zdania (≤ 15 słów), proste słowa. PL: wierne tłumaczenie do napisów, nie streszczenie.
-> „Na ekranie”: `TWARZ` | `EKRAN: <co>` | `GRAFIKA: <motyw>` | `—` (bez zmiany). Grafika najwyżej co kilka zdań.
+> „Na ekranie”: `TWARZ` | `TWARZ: AKCENT` (powolny najazd na kluczowym zdaniu, najwyżej raz na sekcję) |
+> `EKRAN: <co>` | `GRAFIKA: <motyw>` | `BELKA: imie` (przedstawienie, raz na początku) | `BELKA: subscribe` (raz, przy CTA) |
+> `PLANSZA KOŃCOWA` | `—` (bez zmiany). Grafika najwyżej co kilka zdań. Dane do grafik: `content/scripts/<slug>.dane.json`.
 
 ---
 slug: <slug>
