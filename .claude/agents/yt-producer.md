@@ -32,7 +32,9 @@ pakujesz gotowy scenariusz tak, żeby film został znaleziony, kliknięty i dobr
    - **Punkt kontrolny:** zanim wygenerujesz, zapisz w `thumbnails.md` 3–4 koncepcje (tekst 2–4 słowa, zdjęcie
      twarzy, tło, werdykt/kolor) — każda inny archetyp: (A) twarz + tekst, (B) liczba/wynik bez twarzy,
      (C) publikacja/wykres w tle + twarz, (D) pytanie. Tekst miniatury uzupełnia tytuł, nie powtarza go.
-   - Generuj: `python3 scripts/thumbnail.py --text "<…, *akcent*, | linia>" --label "<FILAR #n>"
+   - **Szablony serii (D2, decyzja 2026-11-09):** warianty A/B/C odpowiadają `--szablon A` (werdykt: karta + twarz),
+     `--szablon B` (liczba z karty, bez twarzy), `--szablon C` (pytanie, duża twarz). Do Test & Compare idą te trzy.
+   - Generuj: `python3 scripts/thumbnail.py --szablon <A|B|C> --text "<…, *akcent*, | linia>" --label "<FILAR #n>"
      --verdict <pass|fail|neutral> --motif <equity|candles|funnel|none> [--equity-csv <realne dane>]
      [--face assets/face/<plik>] [--bg <tło>] --out content/publish/<slug>/thumbnail-a.jpg`
      (…-b, -c, -d).

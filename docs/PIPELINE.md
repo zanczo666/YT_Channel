@@ -82,7 +82,7 @@ idempotentny, logowany, z powiadomieniem przy błędzie.
 | # | Element | Status | Opis |
 |---|---|---|---|
 | D1 | Pakiet publikacji | ✅ | agent `yt-producer`, `/publikacja` (tytuły, opis, tagi, miniatury, shorts, checklista) |
-| D2 | Miniatury | 🟡 | `thumbnail.py` i pomocnicze. Zależności (`cv2`, `tesseract`, `playwright`, `rembg`) są w snapshocie workera (G3c); produkcyjnie miniatury robi `yt-producer` na `claudecore` (`thumbnail.py` potrzebuje tylko Pillow). Do decyzji: 3 stałe szablony serii |
+| D2 | Miniatury | ✅ | `thumbnail.py --szablon A|B|C`: trzy stałe szablony serii (A werdykt: karta + twarz, B liczba z karty, C pytanie z dużą twarzą), te trzy idą do Test & Compare; `yt-producer` generuje je na `claudecore` (wystarczy Pillow). Kontrola `thumbnail_check.py` i sceny HTML mają zależności w snapshocie workera (G3c). Zdjęcia twarzy do `assets/face/` dostarcza właściciel |
 | D3 | Upload przez API | ✅ | `scripts/upload.py` (`film`, `zaplanuj`, `short`, `playlisty`, `--na-sucho`): wznawialne wysyłanie, miniatura, napisy EN/PL, lokalizacja PL, playlista filaru, Education, EN. Metadane z `metadata.json` pakietu. **Czeka na klienta OAuth i `yt_api.py autoryzuj`**; sprawdzone na sucho |
 | D4 | Audyt API YouTube | 🟡 | szkic polityki i lista do wniosku: `docs/legal/privacy-youtube-api.md`. Złożenie wniosku i publikacja polityki — właściciel (wymaga decyzji o stronie). Do tego czasu filmy przez API są prywatne, termin ustawiasz w Studio (runner o tym przypomina) |
 | D5 | Lista ręczna w Studio | ✅ | po wgraniu runner wysyła `checklist.md` z pakietu z linkiem do edycji w Studio |

@@ -476,6 +476,17 @@ def save_jpg(img: Image.Image, out: Path) -> None:
     raise RuntimeError(f"Miniatura > 2 MB nawet przy quality=70: {out}")
 
 
+# D2: trzy stałe szablony serii zamiast trzynastu układów. Widz rozpoznaje kanał po powtarzalnym wyglądzie,
+# a test A/B porównuje szablony, nie przypadkowe warianty. Jawnie podana flaga zawsze wygrywa z szablonem.
+SZABLONY_SERII = {
+    "A": {"layout": "rich", "motif": "equity", "arrow": True, "grade": True,
+          "font": Path(__file__).resolve().parent.parent / "assets" / "fonts" / "Anton-Regular.ttf"},   # werdykt
+    "B": {"layout": "simple", "motif": "funnel",
+          "font": Path(__file__).resolve().parent.parent / "assets" / "fonts" / "Anton-Regular.ttf"},   # liczba z karty
+    "C": {"layout": "simple", "motif": "none", "face_zoom": True, "grade": True},                       # pytanie
+}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--text", required=True, help="2–4 słowa; *słowo* = akcent, | = nowa linia")
@@ -492,7 +503,12 @@ def main() -> int:
     ap.add_argument("--grade", action="store_true", help="dopasowanie twarzy do sceny + światło konturowe w kolorze werdyktu")
     ap.add_argument("--font", type=Path, help="font nagłówka (domyślnie Nimbus Sans Narrow Bold), np. assets/fonts/Anton-Regular.ttf")
     ap.add_argument("--out", required=True, type=Path)
+    ap.add_argument("--szablon", choices=sorted(SZABLONY_SERII),
+                    help="A = werdykt (karta + twarz), B = liczba z karty, C = pytanie (duża twarz)")
     a = ap.parse_args()
+    for klucz, wartosc in SZABLONY_SERII.get(a.szablon or "", {}).items():
+        if getattr(a, klucz) == ap.get_default(klucz):
+            setattr(a, klucz, wartosc)
     global FONT_BOLD, FACE_ZOOM
     if a.font:
         FONT_BOLD = str(a.font)
