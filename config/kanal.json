@@ -4,9 +4,18 @@
   "dzien_publikacji": "thursday",
   "godzina_publikacji": "17:00",
   "bufor_filmow": 2,
-  "filary": ["Validation Gates", "Paper vs Reality", "Tools", "The Funnel", "Strategy Graveyard"],
+  "filary": [
+    "Validation Gates",
+    "Paper vs Reality",
+    "Tools",
+    "The Funnel",
+    "Strategy Graveyard"
+  ],
   "shorts_co_dni": 2,
-  "analityka_po_dniach": [7, 28],
+  "analityka_po_dniach": [
+    7,
+    28
+  ],
   "retencja_dni": 30,
   "dysk_ostrzezenie_procent": 80,
   "playlisty": {
@@ -17,5 +26,7 @@
     "Tools": "Free MT5 Tools"
   },
   "kategoria_youtube": "27",
-  "jezyk": "en"
+  "jezyk": "en",
+  "intro": false,
+  "_intro": "true = 3 s identyfikacji marki na początku każdego filmu (C10); film #1 bez intro"
 }

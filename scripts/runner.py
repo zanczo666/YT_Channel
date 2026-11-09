@@ -262,7 +262,8 @@ def krok_do_nagrania(st: dict) -> None:
 
 def montaz(filmy: list[dict]) -> None:
     """B4: wszystkie nagrane filmy w jednym uruchomieniu workera (jedna opłacona godzina)."""
-    argumenty = ["scripts/worker.py", "job", "--work", str(FILMY / "_przebieg")]
+    argumenty = ["scripts/worker.py", "job", "--work", str(FILMY / "_przebieg"),
+                 *(["--intro"] if KONFIG.get("intro") else [])]
     for st in filmy:
         dane = scenariusz(st).with_suffix(".dane.json")
         argumenty += ["--film", st["wideo"], str(scenariusz(st)), *([str(dane)] if dane.is_file() else [])]
