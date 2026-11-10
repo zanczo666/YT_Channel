@@ -1,0 +1,34 @@
+$ /pomysly
+
+Gotowe. Mam 5 propozycji filmów, zapisałem je w `content/ideas/2026-11-10-propozycje-filmow.md`. Pliku nie commitowałem.
+
+| # | Tytuł roboczy | Filar | Źródło | Publikacja od |
+|---|---|---|---|---|
+| 1 | *Zero Trades: How to Find an Entry Condition That Can Never Be True* | Validation Gates (bramka 1) | `lessons/2026-10-13-martwy-warunek-wejscia.md` | 2026-11-03 |
+| 2 | *Five Strategies, One Idea: Why I Count Ideas, Not Names* | Validation Gates (bramka 6) | `lessons/2026-10-14-limit-wariantow-jednego-pomyslu.md` | 2026-11-04 |
+| 3 | *My Backtester Treated Bitcoin Like EUR/USD — 29% of the Data Was Missing* | Validation Gates (bramka 2) | `lessons/2026-10-07-krypto-w-silniku-fx.md` | 2026-10-28 |
+| 4 | *Four Trades or One Bet? A Free MT5 Currency Exposure Monitor* | Tools | `tools/CurrencyExposureMonitor.md` (feed `521b17b`) | od razu |
+| 5 | *Win Rate Tells You Almost Nothing — and Profit Factor Can Break Your Validation* | Validation Gates (bramka 3) | `lessons/2026-10-14-parytet-pf-zero-przez-zero.md` | 2026-11-04 |
+
+Każdy temat ma w pliku hak EN, 4 kroki formuły, rozdziały od `0:00` oraz listę tego, co pokazać, a czego nie. Wszystkie liczby są z kart. Tam, gdzie karta ich nie podaje, napisałem „brak danych”.
+
+**Na co zwrócić uwagę:**
+- **Proporcja nie trzyma 70/30.** Formalnie tematy 1–3 są z projektów, a 4–5 to evergreen, czyli 60/40. Temat 5 opiera się jednak na przypadku z fabryki, więc w praktyce wychodzi blisko 70/30. Po 19.11 zejdą embarga i tematów z projektów przybędzie.
+- **W karcie Currency Exposure Monitor są liczby przykładowe.** Wartości 12.9 : 1 i −12,8% equity są tam podane jako „np.”. Zaznaczyłem w pliku, żeby nie trafiły do skryptu, tytułu ani miniatury. Na ekranie mają być tylko wartości, które wskaźnik faktycznie pokaże w dniu nagrania.
+- **Proponowana kolejność publikacji:** 3 → 4 → 1 → 2 → 5. Temat 3 ma najmocniejszy hak, a 4 to świeża publikacja w CodeBase.
+
+**Karty pod embargo** (nie czytałem ich treści, wpisałem tylko daty):
+- `funnel/2026-10.md`: od 19.11, pierwszy odcinek The Funnel
+- `lessons/2026-11-05-ryzyko-dziesiec-razy-za-duze.md`: od 26.11
+- `lessons/2026-11-07-paper-bez-transakcji-symbol-wylaczony.md`: od 28.11
+- `lessons/2026-11-09-profit-factor-11-z-jednej-pozycji.md`: od 30.11, dobra kontynuacja tematu 5
+
+W rezerwie zostaje SpreadMonitorScalpers v1.32: może być osobnym filmem Tools albo przykładem do bramki 7. Karta nie podaje do niego liczb.
+
+Następny krok: `/scenariusz <slug> <ścieżka karty>` dla wybranego tematu.
+
+--- stderr ---
+Permission allow rule (../../.claude/settings.json): Bash(scp * mikrus:*) mixes * with the trailing :* prefix syntax, so it is matched as a literal prefix (the * is not expanded) and will likely never match. Replace that * with the exact value you mean.
+Permission allow rule (../../.claude/settings.json): Bash(scp mikrus:* *) has a :* that is not at the end, so it is matched as a * wildcard (the : is literal), not as the trailing :* prefix syntax. Replace that :* with the exact value you mean.
+Permission allow rule (../../.claude/settings.json): Bash(scp * contabo:*) mixes * with the trailing :* prefix syntax, so it is matched as a literal prefix (the * is not expanded) and will likely never match. Replace that * with the exact value you mean.
+Permission allow rule (../../.claude/settings.json): Bash(scp contabo:* *) has a :* that is not at the end, so it is matched as a * wildcard (the : is literal), not as the trailing :* prefix syntax. Replace that :* with the exact value you mean.

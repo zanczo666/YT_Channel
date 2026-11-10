@@ -1,0 +1,31 @@
+$ Napisz szkic newslettera za 2026-11 po angielsku do pliku content/newsletter/2026-11.md. Źródła liczb (wyłącznie te karty, bez szacunków):
+- context/factory/funnel/2026-10.md
+Filmy z tego miesiąca:
+- brak
+Układ: 1) lejek miesiąca (ile hipotez, gdzie odpadły — tylko z karty; bez karty napisz, że raport lejka w tym miesiącu się nie ukazał), 2) filmy miesiąca, 3) jedna lekcja. Bez języka sprzedaży, z zastrzeżeniem o wynikach historycznych. Na górze komentarz HTML: SZKIC DO AKCEPTACJI.
+
+Szkic jest gotowy: `content/newsletter/2026-11.md`. Nie commitowałem go.
+
+**Do decyzji przed wysyłką:**
+- **Embargo.** Karta `funnel/2026-10.md` ma `publish_after: 2026-11-19`, więc newslettera nie można wysłać wcześniej. Napisałem to w komentarzu HTML na górze, obok „SZKIC DO AKCEPTACJI”.
+- **Za który miesiąc są liczby.** Newsletter jest za listopad, ale liczby pochodzą z raportu za październik, zgodnie z Twoją listą źródeł. W tekście piszę wprost, że to najnowszy dostępny raport.
+- **Link do profilu mql5.com.** W miejscu linku jest `[LINK]` do uzupełnienia. Nie ma odnośników do QuantInvest, Methodology ani Ledgera.
+
+**Co jest w środku:**
+1. **Lejek.** Tabela z karty z liczbami bez zmian:
+   - etap Python: weszło 45, przeszły 2, odpadło 43 (37 na bramce jakości, 6 bez sygnałów);
+   - etap MT5: weszło 6, przeszła 1, odpadło 5.
+
+   Tam, gdzie karta nie ma liczb, wpisałem „no data”. Wyjaśniam też grupę kontrolną w MT5. Przy strategii, która przeszła MT5, zaznaczam, że to tylko jeden etap, a walidacji jeszcze nie przeszła. Podaję o niej wyłącznie liczbę, bez żadnych szczegółów.
+2. **Filmy.** Jedno zdanie, że w tym miesiącu nie było nowych filmów.
+3. **Lekcja.** Generatory liczyły ATR średnią Wildera, a MT5 prostą średnią. Wziąłem ją z sekcji „Usterki fabryki” tej samej karty, więc nie potrzebuje innych źródeł ani liczb. Jest w niej ogólna zasada i prosty test, który czytelnik może zrobić u siebie.
+
+Na końcu jest zastrzeżenie: to nie porada inwestycyjna, a wyniki historyczne nie gwarantują przyszłych. W tekście nie ma języka sprzedaży.
+
+Gdybyś wolał inną lekcję, embargo minęło już dla kart z `context/factory/lessons/`, np. „martwy warunek wejścia” albo „0/0 ≠ niezgodność”. Ich liczb nie można jednak użyć bez rozszerzenia listy źródeł.
+
+--- stderr ---
+Permission allow rule (../../.claude/settings.json): Bash(scp * mikrus:*) mixes * with the trailing :* prefix syntax, so it is matched as a literal prefix (the * is not expanded) and will likely never match. Replace that * with the exact value you mean.
+Permission allow rule (../../.claude/settings.json): Bash(scp mikrus:* *) has a :* that is not at the end, so it is matched as a * wildcard (the : is literal), not as the trailing :* prefix syntax. Replace that :* with the exact value you mean.
+Permission allow rule (../../.claude/settings.json): Bash(scp * contabo:*) mixes * with the trailing :* prefix syntax, so it is matched as a literal prefix (the * is not expanded) and will likely never match. Replace that * with the exact value you mean.
+Permission allow rule (../../.claude/settings.json): Bash(scp contabo:* *) has a :* that is not at the end, so it is matched as a * wildcard (the : is literal), not as the trailing :* prefix syntax. Replace that :* with the exact value you mean.
