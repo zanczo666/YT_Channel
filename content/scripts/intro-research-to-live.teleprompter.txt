@@ -1,0 +1,110 @@
+Most trading channels show you what worked.
+I'm going to show you what didn't, and why.
+Every failure I publish is one mistake you don't have to make yourself.
+
+My name is Radoslaw Lubas.
+I build trading systems, and I write their code myself.
+I work in MQL5, the language of MetaTrader, and in Python.
+On this channel, I build and stress-test these systems in public.
+The path goes from research papers all the way to live algorithms.
+And I publish the systems that fail, not just the ones that work.
+This first video is the map of that path.
+You'll see every step, the rules of this channel, and what comes next.
+If you test strategies yourself, you can use the same steps in your own work.
+
+Let me show you how an idea travels through my pipeline.
+A pipeline is simply a fixed order of steps.
+Every idea goes through the same steps, in the same order.
+Step one is research.
+I start with a published paper or a clear observation about the market.
+I write it down as a hypothesis: one claim that a test can reject.
+A hypothesis is not a strategy yet.
+It's a question I want the market to answer.
+Step two is the code.
+A code generator turns the hypothesis into an Expert Advisor.
+An Expert Advisor, or EA, is a trading program that runs inside MetaTrader.
+Before any real test, the EA gets a simple check.
+Does it place trades at all, and do they follow the rules?
+An EA that never trades is usually a bug, not a careful strategy.
+Step three is the backtest in MetaTrader five.
+A backtest replays the strategy on historical prices.
+It answers one question: what would have happened in the past?
+That's useful, but it's also where most mistakes hide.
+Step four is a second engine, written in Python.
+I run the same logic outside MetaTrader, with my own code.
+If the two engines disagree, something is wrong.
+Sometimes the bug is in the strategy.
+Sometimes it's in the tester itself.
+Step five is validation.
+Here the strategy goes through a series of gates.
+Each gate asks one hard question.
+Does it survive higher spread and slippage?
+Those are the hidden costs between the price you see and the price you get.
+Does it work on data it has never seen?
+We call that out-of-sample data.
+Is the result stable when I change the settings a little?
+And how many versions did I try before this one looked good?
+Each gate gives a verdict: pass, conditional, or fail.
+One critical fail stops the whole review.
+Step six is paper trading.
+The EA trades live prices on a demo account, with no real money at risk.
+Real spreads, real fills, real trading hours.
+The market checks things a backtest never looked at.
+Live trading is the last step.
+Every update has to earn its way into production.
+Any step can stop an idea.
+When that happens, the reason goes into a log.
+That log is the raw material for this channel.
+
+Why should you care about my pipeline?
+Because most backtests you see online tell one side of the story.
+Profitable backtests are easy to sell.
+I test whether they survive.
+Here's the problem.
+If you try enough ideas, one will look brilliant by chance.
+Then you see that one, and never the many that failed before it.
+This is called selection bias, and it fools experienced traders too.
+The same thing happens inside one strategy.
+Tune it long enough, and it learns the past by heart.
+We call that overfitting.
+The curve looks perfect on old data and breaks on new data.
+So a failed test is not wasted work.
+It tells you which assumption was wrong.
+That's why I show failures with the same care as successes.
+To be clear, a systematic approach does not promise more profit than manual trading.
+Its advantage is simpler: you can measure it, and you can test it.
+
+So how can you use this on your own strategies?
+Before you trust any backtest, yours or someone else's, ask a few questions.
+First: were real costs included?
+Spread, commission and slippage can turn a rising curve into a flat one.
+Second: was any data kept away from the building process?
+If every candle was used for tuning, the result is a memory test.
+Third: how many versions were tried before this one?
+Many versions of one idea are still one idea, tested many times.
+Fourth: does the result hold when the settings change a little?
+If a small change kills it, the result was probably luck.
+You don't need a big pipeline to ask these questions.
+The MetaTrader tester and some patience are enough to start.
+If this kind of testing is useful, subscribe.
+Every month I publish what survived and what didn't.
+And a like helps the video reach other systematic traders.
+
+Now, the rules of this channel.
+I will never tell you that a strategy makes a certain profit.
+Every result comes with its costs, its test period, and its verdict.
+Failures get published, together with the reason they failed.
+Strategies that pass are shown as summary numbers, not as recipes.
+And every number comes from my own records, never from a made-up example.
+That's why this video has no numbers at all.
+My research log isn't public yet, and I won't quote numbers you can't check.
+So the verdict for today is simple.
+The pipeline is built.
+Now it has to prove itself in public.
+
+Whenever you see a test result on this channel, remember this.
+Historical results, not investment advice. Past performance does not guarantee future results.
+My free MetaTrader tools are on my mql5.com profile.
+The link is in the description.
+Subscribe for the next step.
+And this video shows why a profitable backtest proves almost nothing.

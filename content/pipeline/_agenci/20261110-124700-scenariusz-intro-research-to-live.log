@@ -1,0 +1,60 @@
+$ /scenariusz intro-research-to-live content/ideas/2026-10-21-plan-startowy.md film #1 (Intro). Wersja: twarz + plansze (diagram pipeline'u, zasady kanału) + zrzuty ekranu MT5 bez wyników, nazw strategii i promptów. Bez liczb (brak Ledgera), bez QuantInvest, CTA tylko mql5.com. BELKA: imie po haku, BELKA: subscribe przy CTA. Długość 6-8 min.
+
+Scenariusz jest gotowy: 104 zdania (L001–L104). Nie commitowałem, plik czeka na Twoją akceptację.
+
+**Tytuł roboczy:** *I Test Trading Strategies in Public. Failures Included.* W pliku są jeszcze trzy inne warianty dla `/publikacja`.
+
+**Hook**
+- **EN:** "Most trading channels show you what worked. I'm going to show you what didn't, and why. Every failure I publish is one mistake you don't have to make yourself."
+- **PL:** „Większość kanałów o tradingu pokazuje Ci, co zadziałało. Ja pokażę Ci, co nie zadziałało, i dlaczego. Każda porażka, którą publikuję, to jeden błąd, którego nie musisz popełniać sam.”
+
+**Szacowana długość:** ok. 6:45–7:00 min (983 słowa EN), czyli w Twoim przedziale 6–8 min.
+
+**Rozdziały (szacunkowe, po nagraniu wpiszesz rzeczywiste czasy):**
+- 0:00 Why I publish failures
+- 0:12 Who I am
+- 0:53 The pipeline: from paper to live
+- 3:33 Why it matters to you
+- 4:37 How to check your own backtest
+- 5:41 Channel rules and today's verdict
+- 6:29 Disclaimer and what's next
+
+**`<BRAK DANYCH>`:** nie ma żadnego. W filmie nie pada żadna liczba. Brak danych scenariusz mówi wprost: „dziennik badań nie jest jeszcze publiczny” (L094–L095).
+
+**Znaczniki:** `BELKA: imie` jest przy L004, zaraz po haku. `BELKA: subscribe` jest przy L085, w CTA (ok. 5:30).
+
+**Do decyzji:** L104 zapowiada film #2 („Why a profitable backtest proves almost nothing”). Jeśli #2 nie będzie gotowy na czas, trzeba zmienić L104 albo planszę końcową.
+
+## Materiały do nagrania
+
+**Twarz do kamery (poziomo):**
+- hook i przedstawienie się (L001–L012);
+- krótkie wejścia w trakcie diagramu: L020, L026, L030, L035, L046, L050, L052, L055;
+- większość sekcji „Why it matters”;
+- CTA (L083–L087), werdykt (L094–L098) i zastrzeżenie (L099–L100).
+
+**Plansze:**
+- Diagram pipeline'u: Research → Code → MT5 backtest → Python backtest → Validation gates → Paper → Live, a pod spodem pole „Log”. Potrzebne wersje: wszystko wyszarzone, kolejne etapy podświetlone, strzałki „stop” prowadzące do Logu, całość aktywna.
+- Etykiety PASS / CONDITIONAL / FAIL.
+- Siatka syntetycznych krzywych equity z jedną wyróżnioną, bez osi i wartości.
+- Krzywa IS/OOS z załamaniem w części OOS, bez osi i wartości.
+- Lista pytań kontrolnych, plansza „Channel rules”, pasek z zastrzeżeniem, plansza końcowa.
+
+**Zrzuty MT5 (tylko konto demo):**
+- **L006, czysty wykres:** ukryj Nawigator, numer konta, nazwę serwera i Toolbox.
+- **L027, Strategy Tester, zakładka Settings:** zasłoń pole „Expert”, a jeśli coś zdradzają, także datę i deposit. Nie otwieraj Inputs ani zakładek z wynikami.
+- **L084, Tester:** rozwinięta lista „Modeling” i pole „Delays”, z tymi samymi zasłonięciami.
+
+**Profil mql5.com (L101):** pokaż darmowe narzędzia w Code Base. Zasłoń Freelance (liczbę prac i opinie), Market, Signals, saldo, wiadomości i liczby pobrań.
+
+Pliki:
+- `content/scripts/intro-research-to-live.md`
+- `content/scripts/intro-research-to-live.teleprompter.txt`
+
+Następny krok po Twojej akceptacji: nagranie, a potem `/publikacja intro-research-to-live`.
+
+--- stderr ---
+Permission allow rule (../../.claude/settings.json): Bash(scp * mikrus:*) mixes * with the trailing :* prefix syntax, so it is matched as a literal prefix (the * is not expanded) and will likely never match. Replace that * with the exact value you mean.
+Permission allow rule (../../.claude/settings.json): Bash(scp mikrus:* *) has a :* that is not at the end, so it is matched as a * wildcard (the : is literal), not as the trailing :* prefix syntax. Replace that :* with the exact value you mean.
+Permission allow rule (../../.claude/settings.json): Bash(scp * contabo:*) mixes * with the trailing :* prefix syntax, so it is matched as a literal prefix (the * is not expanded) and will likely never match. Replace that * with the exact value you mean.
+Permission allow rule (../../.claude/settings.json): Bash(scp contabo:* *) has a :* that is not at the end, so it is matched as a * wildcard (the : is literal), not as the trailing :* prefix syntax. Replace that :* with the exact value you mean.

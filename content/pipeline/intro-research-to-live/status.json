@@ -1,0 +1,29 @@
+{
+  "slug": "intro-research-to-live",
+  "stan": "SCRIPT_REVIEW",
+  "zrodlo": "content/ideas/2026-10-21-plan-startowy.md film #1 (Intro). Wersja: twarz + plansze (diagram pipeline'u, zasady kanału) + zrzuty ekranu MT5 bez wyników, nazw strategii i promptów. Bez liczb (brak Ledgera), bez QuantInvest, CTA tylko mql5.com. BELKA: imie po haku, BELKA: subscribe przy CTA. Długość 6-8 min.",
+  "filar": null,
+  "historia": [
+    {
+      "czas": "2026-11-10T12:52:30+01:00",
+      "z": "IDEA",
+      "do": "SCRIPT_DRAFT",
+      "opis": "scenariusz jest"
+    },
+    {
+      "czas": "2026-11-10T12:52:30+01:00",
+      "z": "SCRIPT_DRAFT",
+      "do": "SCRIPT_REVIEW",
+      "opis": "kontrola zgodności przeszła"
+    }
+  ],
+  "blad": null,
+  "proby": 0,
+  "bramki": {
+    "scenariusz": {
+      "mid": null,
+      "wyslano": "2026-11-10T12:52:30+01:00"
+    }
+  },
+  "uwagi_zgodnosci": "A6 UWAGI: intro-research-to-live.md\n     uwaga: liczby do sprawdzenia z Ledgerem lub kartą: L006, L101"
+}
