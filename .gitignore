@@ -18,3 +18,4 @@ assets/face/**/*.jpg
 # Wygenerowane pakiety publikacji — miniatury
 content/publish/**/*.jpg
 content/publish/**/*.png
+content/pipeline/.runner.lock
