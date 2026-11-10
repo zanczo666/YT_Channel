@@ -17,7 +17,7 @@ Trzy kroki w jednym przebiegu:
     python3 scripts/graphics.py --work /tmp/film-01 --script content/scripts/<slug>.md --dane dane.json
 
 Format `--dane`: słownik `ID zdania` (albo nazwa motywu) → opis grafiki. Każdy wpis ma `typ`
-(`equity`, `lejek`, `metryki`, `cytat`, `diagram`, `lista`), `tytul`, `zrodlo` (skąd liczby) i pola właściwe dla typu.
+(`equity`, `lejek`, `metryki`, `cytat`, `diagram` z opcjonalnym `podswietl`, `lista`), `tytul`, `zrodlo` (skąd liczby) i pola właściwe dla typu.
 `zrodlo: "test"` wypala na grafice znak wodny DANE TESTOWE — żeby taki materiał nie trafił na kanał.
 
 `BELKA: subscribe` w kolumnie „Na ekranie” to mała belka nad twarzą, bez danych z `--dane`. Stawiamy ją raz
@@ -253,15 +253,17 @@ def rysuj_diagram(rysuj: ImageDraw.ImageDraw, dane: dict, akcent: tuple[int, int
     wys = sk(260)
     y0 = (WYSOKOSC - wys) / 2 + sk(30)
     f = font(FONT_BOLD, sk(38))
+    # `podswietl`: numer etapu (od 0) do wyróżnienia, `null` = wszystkie wyszarzone; domyślnie ostatni
+    wyrozniony = dane.get("podswietl", n - 1)
     for i, etap in enumerate(etapy):
         x0 = MARGINES + i * (szer + strzalka)
         ostatni = i == n - 1
         rysuj.rounded_rectangle([x0, y0, x0 + szer, y0 + wys], radius=sk(18),
-                                fill=(58, 76, 102) if not ostatni else akcent)
+                                fill=akcent if i == wyrozniony else (58, 76, 102))
         linie = zlam_tekst(rysuj, str(etap).upper(), f, szer - sk(28))
         y = y0 + wys / 2 - (len(linie) - 1) * sk(23)
         for linia in linie:
-            rysuj.text((x0 + szer / 2, y), linia, font=f, fill=BG if ostatni else TEXT, anchor="mm")
+            rysuj.text((x0 + szer / 2, y), linia, font=f, fill=BG if i == wyrozniony else TEXT, anchor="mm")
             y += sk(46)
         if not ostatni:
             xs, ys = x0 + szer + sk(10), y0 + wys / 2
